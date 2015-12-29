@@ -26,11 +26,9 @@
 
 from ._init import init
 from ._conf import ConfiguredRouterModule
-from .url import Url, PatternUrl
 from .router import (RouterConfiguration, InitializationError, DependencyLoop,
                      DuplicateRouteDefinition)
 
 
-__all__ = ['init', 'ConfiguredRouterModule', 'Url', 'PatternUrl',
-           'RouterConfiguration', 'InitializationError', 'DependencyLoop',
-           'DuplicateRouteDefinition']
+__all__ = ['init', 'ConfiguredRouterModule' 'RouterConfiguration',
+           'InitializationError', 'DependencyLoop', 'DuplicateRouteDefinition']

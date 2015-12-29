@@ -1,4 +1,4 @@
-from score.http import PatternUrl
+from score.http.url import PatternUrlTemplate as PatternUrl
 
 
 def test_empty_pattern():

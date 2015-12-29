@@ -24,7 +24,7 @@
 # the discretion of STRG.AT GmbH also the competent court, in whose district the
 # Licensee has his registered seat, an establishment or assets.
 
-from .url import PatternUrl
+from .url import UrlTemplate, PatternUrlTemplate
 import networkx as nx
 from score.init import InitializationError as ScoreInitializationError
 from itertools import permutations
@@ -93,11 +93,13 @@ class RouterConfiguration:
             before = (before,)
         if isinstance(after, str) or not hasattr(after, '__iter__'):
             after = (after,)
+        if not isinstance(urltpl, UrlTemplate):
+            urltpl = PatternUrlTemplate(urltpl)
 
         def capture_route(func):
             if name in self.routes:
                 raise DuplicateRouteDefinition(name)
-            route = RouteConfiguration(name, PatternUrl(urltpl), tpl, func)
+            route = RouteConfiguration(name, urltpl, tpl, func)
             for other in before:
                 if isinstance(other, RouteConfiguration):
                     other = other.name

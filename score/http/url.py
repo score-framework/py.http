@@ -41,7 +41,7 @@ class InvalidVariable(UrlGenerationException, ValueError):
     pass
 
 
-class Url(abc.ABC):
+class UrlTemplate(abc.ABC):
 
     @property
     def regex(self):
@@ -62,6 +62,10 @@ class Url(abc.ABC):
     def __lt__(self, other):
         pass
 
+    @abc.abstractmethod
+    def equals(self, other):
+        pass
+
 
 class PatternUrlPart:
 
@@ -75,7 +79,7 @@ class PatternUrlPart:
 
 
 @total_ordering
-class PatternUrl(Url):
+class PatternUrlTemplate(UrlTemplate):
 
     LEVEL_STRING = 0
     LEVEL_NUMBER = 5
@@ -141,10 +145,10 @@ class PatternUrl(Url):
         return result
 
     def __repr__(self):
-        return 'PatternUrl(%s)' % self.pattern
+        return 'PatternUrlTemplate(%s)' % self.pattern
 
     def __lt__(self, other):
-        if not isinstance(other, PatternUrl):
+        if not isinstance(other, PatternUrlTemplate):
             return NotImplemented
         for i in range(min(len(self.parts), len(other.parts))):
             mypart = self.parts[i]
@@ -166,11 +170,11 @@ class PatternUrl(Url):
     def equals(self, other):
         if self is other:
             return True
-        if not isinstance(other, Url):
+        if not isinstance(other, UrlTemplate):
             return False
         if self.regex.pattern == other.regex.pattern:
             return True
-        if not isinstance(other, PatternUrl):
+        if not isinstance(other, PatternUrlTemplate):
             return False
         if len(self.parts) != len(other.parts):
             return False
