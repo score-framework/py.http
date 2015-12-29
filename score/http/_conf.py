@@ -32,6 +32,7 @@ from webob.exc import (
     HTTPMovedPermanently, HTTPFound, HTTPNotFound, HTTPException,
     HTTPRedirection, HTTPOk, HTTPInternalServerError)
 import logging
+from collections import OrderedDict
 
 log = logging.getLogger('score.router')
 
@@ -124,7 +125,8 @@ class Route:
 class ConfiguredRouterModule(ConfiguredModule):
 
     def __init__(self, router, error_handlers, ctx):
-        self.routes = [Route(self, route) for route in router.sorted_routes()]
+        self.routes = OrderedDict((route.name, Route(self, route))
+                                  for route in router.sorted_routes())
         self.ctx = ctx
         self.error_handlers = error_handlers
 
@@ -158,7 +160,7 @@ class ConfiguredRouterModule(ConfiguredModule):
             ctx = self.ctx.Context()
             ctx.http = Http(self, request)
             try:
-                for route in self.routes:
+                for name, route in self.routes.items():
                     if route.handle(ctx):
                         break
                 else:
