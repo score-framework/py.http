@@ -24,45 +24,13 @@
 # the discretion of STRG.AT GmbH also the competent court, in whose district the
 # Licensee has his registered seat, an establishment or assets.
 
-import os
+from ._init import init
+from ._conf import ConfiguredRouterModule
+from .url import Url, PatternUrl
+from .router import (RouterConfiguration, InitializationError, DependencyLoop,
+                     DuplicateRouteDefinition)
 
-from setuptools import setup
 
-here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'README.rst')) as f:
-    README = f.read()
-
-setup(
-    name='score.http',
-    version='0.1',
-    description='HTTP handler of The SCORE Framework',
-    long_description=README,
-    author='strg.at',
-    author_email='score@strg.at',
-    url='http://score-framework.org',
-    keywords='score framework url http',
-    packages=['score', 'score.http'],
-    zip_safe=False,
-    license='LGPL',
-    classifiers=[
-        'Development Status :: 4 - Beta',
-        'Environment :: Console',
-        'Environment :: Web Environment',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU Lesser General '
-            'Public License v3 or later (LGPLv3+)',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Topic :: Software Development :: Libraries :: Application Frameworks',
-    ],
-    entry_points={
-        'score.cli': [
-            'http = score.http.cli:main',
-        ]
-    },
-    install_requires=[
-        'score.init',
-    ]
-)
+__all__ = ['init', 'ConfiguredRouterModule', 'Url', 'PatternUrl',
+           'RouterConfiguration', 'InitializationError', 'DependencyLoop',
+           'DuplicateRouteDefinition']

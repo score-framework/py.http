@@ -27,7 +27,6 @@
 from .url import PatternUrl
 import networkx as nx
 from score.init import InitializationError as ScoreInitializationError
-from webob import Response
 from itertools import permutations
 
 
@@ -40,47 +39,32 @@ class DependencyLoop(InitializationError):
 
 
 class DuplicateRouteDefinition(InitializationError):
-    pass
+
+    def __init__(self, route_name, *args, **kwargs):
+        self.route_name = route_name
+        super().__init__(
+            'Route "%s" already defined' % route_name, *args, **kwargs)
 
 
-class Route:
+class RouteConfiguration:
 
-    def __init__(self, name, url, tpl, func):
+    def __init__(self, name, urltpl, tpl, callback):
         self.name = name
-        self.url = url
+        self.urltpl = urltpl
         self.tpl = tpl
-        self.func = func
-        self._preconditions = []
+        self.callback = callback
+        self.preconditions = []
         self._match2vars = None
         self._vars2url = None
-        self._vars2urlpart = None
+        self._vars2urlparts = None
         self.before = []
         self.after = []
 
     def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-    def handle(self, ctx, request):
-        match = self.url.regex.match(request.path)
-        if not match:
-            return None
-        variables = {}
-        for part in self.parts:
-            if not part.variable:
-                continue
-            variables[part.variable] = match.group(part.variable)
-        if self._match2vars:
-            variables = self.match2vars(variables)
-        for callback in self._preconditions:
-            if not callback(ctx, request, variables):
-                return None
-        result = self.func(ctx, **variables)
-        if isinstance(result, Response):
-            return result
-        # TODO: incomplete
+        return self.callback(*args, **kwargs)
 
     def precondition(self, func):
-        self._preconditions.append(func)
+        self.preconditions.append(func)
         return func
 
     def match2vars(self, func):
@@ -93,60 +77,48 @@ class Route:
         self._vars2url = func
         return func
 
-    def vars2urlpart(self, func):
-        assert not self._vars2urlpart, 'vars2urlpart already set'
-        self._vars2urlpart = func
+    def vars2urlparts(self, func):
+        assert not self._vars2urlparts, 'vars2urlpart already set'
+        self._vars2urlparts = func
         return func
 
 
-class Router:
+class RouterConfiguration:
 
     def __init__(self):
-        self.finalized = False
         self.routes = {}
 
-    def handle(self, request):
-        assert self.finalized, 'Router not finalized'
-        for route in self.sorted_routes:
-            response = route.handle(request)
-            if response is None:
-                continue
-            # TODO: incomplete
-            return response
-
-    def route(self, name, url, *, before=[], after=[], tpl=None):
+    def route(self, name, urltpl, *, before=[], after=[], tpl=None):
         if isinstance(before, str) or not hasattr(before, '__iter__'):
             before = (before,)
         if isinstance(after, str) or not hasattr(after, '__iter__'):
             after = (after,)
 
         def capture_route(func):
-            assert not self.finalized, 'Router already finalized'
             if name in self.routes:
                 raise DuplicateRouteDefinition(name)
-            route = Route(name, PatternUrl(url), tpl, func)
+            route = RouteConfiguration(name, PatternUrl(urltpl), tpl, func)
             for other in before:
-                if isinstance(other, Route):
+                if isinstance(other, RouteConfiguration):
                     other = other.name
                 route.before.append(other)
             for other in after:
-                if isinstance(other, Route):
+                if isinstance(other, RouteConfiguration):
                     other = other.name
                 route.after.append(other)
             self.routes[name] = route
             return route
         return capture_route
 
-    def finalize(self):
-        self.finalized = True
+    def sorted_routes(self):
         graph = nx.DiGraph()
         constrained = set(r for r in self.routes.values()
                           if r.before or r.after)
         unconstrained = set(self.routes.values()) - constrained
         for r1, r2 in permutations(unconstrained, 2):
-            if r1.url.equals(r2.url):
+            if r1.urltpl.equals(r2.urltpl):
                 continue
-            if r1.url < r2.url:
+            if r1.urltpl < r2.urltpl:
                 graph.add_edge(r1.name, r2.name)
             else:
                 graph.add_edge(r2.name, r1.name)
@@ -154,14 +126,12 @@ class Router:
             self._insert_constrained(graph, route)
         for route in unconstrained:
             if not graph.has_node(route.name):
-                # quite improbable case, but this scenario *does* exist (all
+                # quite improbable case, but this scenario does exist (all
                 # routes unconstrained and equal, for example)
                 graph.add_edge(None, route.name)
-        for loop in nx.simple_cycles(graph):
-            raise DependencyLoop(loop)
-        self.sorted_routes = list(self.routes[n]
-                                  for n in nx.topological_sort(graph)
-                                  if n is not None)
+        return list(self.routes[n]
+                    for n in nx.topological_sort(graph)
+                    if n is not None)
 
     def _insert_constrained(self, graph, route):
         for before in route.before:
@@ -188,9 +158,9 @@ class Router:
             return loop
         for predecessor in graph.predecessors_iter(other):
             preroute = self.routes[predecessor]
-            if route.url < preroute.url:
+            if route.urltpl < preroute.urltpl:
                 self._insert_before(graph, route, predecessor)
-            elif route.url > preroute.url:
+            elif route.urltpl > preroute.urltpl:
                 graph.add_edge(predecessor, route.name)
                 if any(nx.simple_cycles(graph)):
                     graph.remove_edge(predecessor, route.name)
@@ -203,9 +173,9 @@ class Router:
             return loop
         for successor in graph.successors_iter(other):
             postroute = self.routes[successor]
-            if route.url > postroute.url:
+            if route.urltpl > postroute.urltpl:
                 self._insert_after(graph, route, successor)
-            elif route.url < postroute.url:
+            elif route.urltpl < postroute.urltpl:
                 graph.add_edge(route.name, successor)
                 if any(nx.simple_cycles(graph)):
                     graph.remove_edge(route.name, successor)

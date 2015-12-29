@@ -24,10 +24,29 @@
 # the discretion of STRG.AT GmbH also the competent court, in whose district the
 # Licensee has his registered seat, an establishment or assets.
 
-from .url import Url, PatternUrl
-from .router import (Router, InitializationError, DependencyLoop,
-                     DuplicateRouteDefinition)
+from ._conf import ConfiguredRouterModule
+from score.init import parse_dotted_path, extract_conf
 
 
-__all__ = ['Url', 'PatternUrl', 'Router', 'InitializationError',
-           'DependencyLoop', 'DuplicateRouteDefinition']
+defaults = {
+}
+
+
+def init(confdict, ctx):
+    """
+    Initializes this module acoording to :ref:`our module initialization
+    guidelines <module_initialization>` with the following configuration keys:
+
+    :confkey:`router`
+        TODO: document me
+
+    :confkey:`handler.*`
+        TODO: document me
+    """
+    conf = dict(defaults.items())
+    conf.update(confdict)
+    router = parse_dotted_path(confdict['router'])
+    error_handlers = []
+    for error, handler in extract_conf(confdict, 'handler.').items():
+        error_handlers[error] = parse_dotted_path(handler)
+    return ConfiguredRouterModule(router, error_handlers, ctx)

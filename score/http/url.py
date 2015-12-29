@@ -29,6 +29,18 @@ import abc
 from functools import total_ordering
 
 
+class UrlGenerationException(Exception):
+    pass
+
+
+class MissingVariable(UrlGenerationException, KeyError):
+    pass
+
+
+class InvalidVariable(UrlGenerationException, ValueError):
+    pass
+
+
 class Url(abc.ABC):
 
     @property
@@ -36,6 +48,11 @@ class Url(abc.ABC):
         if not hasattr(self, '__regex'):
             self.__regex = self._to_regex()
         return self.__regex
+
+    @property
+    @abc.abstractmethod
+    def variables(self):
+        pass
 
     @abc.abstractmethod
     def _to_regex(self):
@@ -73,6 +90,7 @@ class PatternUrl(Url):
         self.pattern = pattern
         self.parts = []
         self._regex_pattern = ''
+        self._var2regex = {}
         for match in re.finditer(r'[^{]+|\{.+?\}', pattern):
             part = match.group(0)
             if part[0] != '{':
@@ -84,16 +102,28 @@ class PatternUrl(Url):
             else:
                 name = part[1:-1]
                 pattern = '[^/]+'
+            self._var2regex[name] = re.compile(pattern)
             self.parts.append(PatternUrlPart(10, pattern, name))
             self._regex_pattern += '(?P<%s>%s)' % (name, pattern)
+        self._regex_pattern += '$'
+
+    @property
+    def variables(self):
+        return list(self._var2regex.keys())
 
     def generate(self, **kwargs):
-        variables = {}
+        for var, regex in self._var2regex.items():
+            if var not in kwargs:
+                raise MissingVariable(var)
+            kwargs[var] = str(kwargs[var])
+            if not regex.match(kwargs[var]):
+                raise InvalidVariable(
+                    'Value for "%s" does not match variable\'s regex (%s)' %
+                    (var, regex.pattern))
         url = ''
         for part in self.parts:
             if part.variable:
-                variables[part.variable] = kwargs[part.variable]
-                url += str(kwargs[part.variable])
+                url += kwargs[part.variable]
             else:
                 url += part.pattern
         return url
