@@ -1,4 +1,4 @@
-from score.router import PatternUrl
+from score.http import PatternUrl
 
 
 def test_empty_pattern():
@@ -85,16 +85,3 @@ def test_string_precedence_3():
     url1 = PatternUrl('{a}/a')
     url2 = PatternUrl('{b}/b')
     assert url1 < url2
-
-
-def test_url_generation_1():
-    url = PatternUrl('/{foo}')
-    assert url.generate(foo='bar') == '/bar'
-
-
-def test_url_generation_2():
-    url = PatternUrl(r'/{foo>\d+}')
-    assert url.generate(foo=123) == '/123'
-
-
-'/{article.author.slug}/{article.slug}-{article.id}'

@@ -1,33 +1,35 @@
-from score.router import Router, DependencyLoop, DuplicateRouteDefinition
-from score.router.router import Route
+from score.ctx import init as init_ctx
+from score.http import (
+    init, RouterConfiguration as Router, DependencyLoop,
+    DuplicateRouteDefinition)
+from score.http.router import RouteConfiguration
 import pytest
+from unittest.mock import Mock
 
 
-def test_finalize_empty_router():
+def test_empty_router():
     router = Router()
-    router.finalize()
+    init({'router': router}, ctx=init_ctx())
 
 
 def test_adding_routes():
     router = Router()
+
     @router.route('foo', '/foo')
     def foo():
         pass
-    assert isinstance(foo, Route)
+    assert isinstance(foo, RouteConfiguration)
 
 
 def test_simple_route_comparison_1():
     router = Router()
-    @router.route('a', '/a')
-    def a():
-        pass
-    @router.route('b', '/b')
-    def b():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert router.sorted_routes.index(a) < router.sorted_routes.index(b)
+    router.route('a', '/a')(Mock())
+    router.route('b', '/b')(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert sorted_routes.index('a') < sorted_routes.index('b')
 
 
 def test_simple_route_comparison_2():
@@ -35,145 +37,108 @@ def test_simple_route_comparison_2():
     same as test_simple_route_comparison_1, but with definition order reversed.
     """
     router = Router()
-    @router.route('b', '/b')
-    def b():
-        pass
-    @router.route('a', '/a')
-    def a():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert router.sorted_routes.index(a) < router.sorted_routes.index(b)
+    router.route('b', '/b')(Mock())
+    router.route('a', '/a')(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert sorted_routes.index('a') < sorted_routes.index('b')
 
 
 def test_redefinition():
     router = Router()
-    @router.route('b', '/b')
-    def b():
-        pass
+    router.route('a', '/a')(Mock())
     with pytest.raises(DuplicateRouteDefinition):
-        @router.route('b', '/b')
-        def b():
-            pass
+        router.route('a', '/a')(Mock())
 
 
 def test_custom_order_1():
     router = Router()
-    @router.route('b', '/b')
-    def b():
-        pass
-    @router.route('a', '/a', after=b)
-    def a():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert router.sorted_routes.index(b) < router.sorted_routes.index(a)
+    b = router.route('b', '/b')(Mock())
+    router.route('a', '/a', after=b)(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert sorted_routes.index('b') < sorted_routes.index('a')
 
 
 def test_custom_order_2():
+    """
+    same as test_custom_order_1, but passing a.after as string
+    """
     router = Router()
-    @router.route('b', '/b')
-    def b():
-        pass
-    @router.route('a', '/a', after='b')
-    def a():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert router.sorted_routes.index(b) < router.sorted_routes.index(a)
+    router.route('b', '/b')(Mock())
+    router.route('a', '/a', after='b')(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert sorted_routes.index('b') < sorted_routes.index('a')
 
 
 def test_custom_order_3():
     router = Router()
-    @router.route('a', '/a')
-    def a():
-        pass
-    @router.route('b', '/b')
-    def b():
-        pass
-    @router.route('c', '/c', before=b)
-    def c():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert c in router.sorted_routes
-    assert router.sorted_routes.index(a) < router.sorted_routes.index(c)
-    assert router.sorted_routes.index(c) < router.sorted_routes.index(b)
+    router.route('a', '/a')(Mock())
+    router.route('b', '/b')(Mock())
+    router.route('c', '/c', before='b')(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert 'c' in sorted_routes
+    assert sorted_routes.index('a') < sorted_routes.index('c')
+    assert sorted_routes.index('c') < sorted_routes.index('b')
 
 
 def test_custom_order_4():
     router = Router()
-    @router.route('a', '/a')
-    def a():
-        pass
-    @router.route('b', '/b')
-    def b():
-        pass
-    @router.route('c', '/c', before=a)
-    def c():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert c in router.sorted_routes
-    assert router.sorted_routes.index(c) < router.sorted_routes.index(a)
-    assert router.sorted_routes.index(a) < router.sorted_routes.index(b)
+    router.route('a', '/a')(Mock())
+    router.route('b', '/b')(Mock())
+    router.route('c', '/c', before='a')(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert 'c' in sorted_routes
+    assert sorted_routes.index('c') < sorted_routes.index('a')
+    assert sorted_routes.index('a') < sorted_routes.index('b')
 
 
 def test_custom_order_5():
     router = Router()
-    @router.route('a', '/a')
-    def a():
-        pass
-    @router.route('b', '/b', before=a)
-    def b():
-        pass
-    @router.route('c', '/c', before=a)
-    def c():
-        pass
-    router.finalize()
-    assert a in router.sorted_routes
-    assert b in router.sorted_routes
-    assert c in router.sorted_routes
-    assert router.sorted_routes.index(b) < router.sorted_routes.index(c)
-    assert router.sorted_routes.index(c) < router.sorted_routes.index(a)
+    router.route('a', '/a')(Mock())
+    router.route('b', '/b', before='a')(Mock())
+    router.route('c', '/c', before='a')(Mock())
+    conf = init({'router': router}, ctx=init_ctx())
+    sorted_routes = list(conf.routes.keys())
+    assert 'a' in sorted_routes
+    assert 'b' in sorted_routes
+    assert 'c' in sorted_routes
+    assert sorted_routes.index('b') < sorted_routes.index('c')
+    assert sorted_routes.index('c') < sorted_routes.index('a')
 
 
 def test_loop_1():
     router = Router()
-    @router.route('b', '/b', before='b')
-    def b():
-        pass
+    router.route('a', '/a', before='a')(Mock())
     with pytest.raises(DependencyLoop):
-        router.finalize()
+        init({'router': router}, ctx=init_ctx())
 
 
 def test_loop_2():
     router = Router()
-    @router.route('a', '/a', before='b')
-    def a():
-        pass
-    @router.route('b', '/b', before='a')
-    def b():
-        pass
+    router.route('a', '/a', before='b')(Mock())
+    router.route('b', '/b', before='a')(Mock())
     with pytest.raises(DependencyLoop):
-        router.finalize()
+        init({'router': router}, ctx=init_ctx())
 
 
 def test_loop_3():
     router = Router()
-    @router.route('a', '/a', before='b')
-    def a():
-        pass
-    @router.route('b', '/b', before='c')
-    def b():
-        pass
-    @router.route('c', '/c', before='a')
-    def c():
-        pass
+    router.route('a', '/a', before='b')(Mock())
+    router.route('b', '/b', before='c')(Mock())
+    router.route('c', '/c', before='a')(Mock())
     with pytest.raises(DependencyLoop):
-        router.finalize()
+        init({'router': router}, ctx=init_ctx())
