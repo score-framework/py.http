@@ -48,6 +48,6 @@ class Runner(score.dbgsrv.SocketServerRunner):
 
     def _mkserver(self):
         conf = score.init.init_from_file(self.ini)
-        app = conf.http.mkwsgi(handle_exceptions=False)
+        app = conf.http.mkwsgi()
         from werkzeug.serving import make_server
         return make_server('127.0.0.1', 8080, app)
