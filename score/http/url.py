@@ -69,21 +69,17 @@ class UrlTemplate(abc.ABC):
 
 class PatternUrlPart:
 
-    def __init__(self, level, pattern, variable=None):
-        self.level = level
+    def __init__(self, is_regex, pattern, variable=None):
+        self.is_regex = is_regex
         self.pattern = pattern
         self.variable = variable
 
     def __repr__(self):
-        return 'UrlPart(level=%d, pattern=%s)' % (self.level, self.pattern)
+        return 'UrlPart(pattern=%s)' % (self.pattern)
 
 
 @total_ordering
 class PatternUrlTemplate(UrlTemplate):
-
-    LEVEL_STRING = 0
-    LEVEL_NUMBER = 5
-    LEVEL_ANY = 10
 
     def __init__(self, pattern):
         super().__init__()
@@ -153,7 +149,7 @@ class PatternUrlTemplate(UrlTemplate):
         for i in range(min(len(self.parts), len(other.parts))):
             mypart = self.parts[i]
             hispart = other.parts[i]
-            if mypart.level == 0 and hispart.level == 0:
+            if not mypart.is_regex and not hispart.is_regex:
                 if mypart.pattern == hispart.pattern:
                     continue
                 if mypart.pattern.startswith(hispart.pattern):
@@ -161,9 +157,9 @@ class PatternUrlTemplate(UrlTemplate):
                 if hispart.pattern.startswith(mypart.pattern):
                     return False
                 return mypart.pattern < hispart.pattern
-            if mypart.level < hispart.level:
+            if not mypart.is_regex and hispart.is_regex:
                 return True
-            if mypart.level > hispart.level:
+            if mypart.is_regex and not hispart.is_regex:
                 return False
         return len(self.parts) > len(other.parts)
 
@@ -181,7 +177,7 @@ class PatternUrlTemplate(UrlTemplate):
         for i in range(len(self.parts)):
             mypart = self.parts[i]
             otherpart = other.parts[i]
-            if mypart.level != otherpart.level:
+            if mypart.is_regex != otherpart.is_regex:
                 return False
             if mypart.pattern != otherpart.pattern:
                 return False
