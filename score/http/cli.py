@@ -26,6 +26,7 @@
 
 import click
 import score.init
+import score.dbgsrv
 
 
 @click.group()
@@ -34,9 +35,19 @@ def main():
 
 
 @main.command()
-@click.argument('conf', type=click.Path(file_okay=True, dir_okay=False))
-def serve(conf):
-    conf = score.init.init_from_file(conf)
-    from wsgiref.simple_server import make_server
-    server = make_server('127.0.0.1', 8080, conf.http.mkwsgi())
-    server.serve_forever()
+@click.argument('ini', type=click.Path(file_okay=True, dir_okay=False))
+def serve(ini):
+    score.init.init_logging_from_file(ini)
+    score.dbgsrv.Server(Runner(ini)).start()
+
+
+class Runner(score.dbgsrv.SocketServerRunner):
+
+    def __init__(self, ini):
+        self.ini = ini
+
+    def _mkserver(self):
+        conf = score.init.init_from_file(self.ini)
+        app = conf.http.mkwsgi(handle_exceptions=False)
+        from werkzeug.serving import make_server
+        return make_server('127.0.0.1', 8080, app)
