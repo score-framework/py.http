@@ -45,7 +45,7 @@ setup(
     zip_safe=False,
     license='LGPL',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 2 - Pre-Alpha',
         'Environment :: Console',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
