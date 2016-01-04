@@ -25,10 +25,11 @@
 # Licensee has his registered seat, an establishment or assets.
 
 from ._conf import ConfiguredRouterModule
-from score.init import parse_dotted_path, extract_conf
+from score.init import parse_dotted_path, extract_conf, parse_bool
 
 
 defaults = {
+    'debug': False,
 }
 
 
@@ -42,11 +43,15 @@ def init(confdict, ctx):
 
     :confkey:`handler.*`
         TODO: document me
+
+    :confkey:`debug` :faint:`[default=False]
+        TODO: document me
     """
     conf = dict(defaults.items())
     conf.update(confdict)
-    router = parse_dotted_path(confdict['router'])
+    router = parse_dotted_path(conf['router'])
     error_handlers = []
-    for error, handler in extract_conf(confdict, 'handler.').items():
+    for error, handler in extract_conf(conf, 'handler.').items():
         error_handlers[error] = parse_dotted_path(handler)
-    return ConfiguredRouterModule(router, error_handlers, ctx)
+    debug = parse_bool(conf['debug'])
+    return ConfiguredRouterModule(router, error_handlers, ctx, debug)

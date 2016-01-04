@@ -87,7 +87,7 @@ class Route:
             variables[name] = current
         return variables
 
-    def get_handler(self, ctx):
+    def handle(self, ctx):
         match = self.urltpl.regex.match(ctx.http.request.path)
         if not match:
             return None
@@ -98,37 +98,28 @@ class Route:
         for callback in self.preconditions:
             if not callback(ctx, **variables):
                 return None
-
-        def handler():
-            result = self.callback(ctx, **variables)
-            if isinstance(result, Response):
-                return result
-            if isinstance(result, str):
-                ctx.http.response.text = result
-            elif self.tpl:
-                if result is None:
-                    result = {}
-                assert isinstance(result, dict)
-                ctx.http.response.text = ctx.tpl.renderer.render(
-                    self.tpl, result)
-            return ctx.http.response
-
-        return handler
-
-    def handle(self, ctx):
-        handler = self.get_handler(ctx)
-        if handler is None:
-            return None
-        return handler()
+        result = self.callback(ctx, **variables)
+        if isinstance(result, Response):
+            return result
+        if isinstance(result, str):
+            ctx.http.response.text = result
+        elif self.tpl:
+            if result is None:
+                result = {}
+            assert isinstance(result, dict)
+            ctx.http.response.text = ctx.tpl.renderer.render(
+                self.tpl, result)
+        return ctx.http.response
 
 
 class ConfiguredRouterModule(ConfiguredModule):
 
-    def __init__(self, router, error_handlers, ctx):
+    def __init__(self, router, error_handlers, ctx, debug):
         self.routes = OrderedDict((route.name, Route(self, route))
                                   for route in router.sorted_routes())
         self.ctx = ctx
         self.error_handlers = error_handlers
+        self.debug = debug
 
     def route(self, name):
         return self.routes[name]
@@ -140,56 +131,53 @@ class ConfiguredRouterModule(ConfiguredModule):
         return self.route(route).url(*args, **kwargs)
 
     def mkwsgi(self):
-        def app(env, start_response):
-            try:
-                request = Request(env)
-            except Exception as e:
-                log.critical(e)
-                response = HTTPInternalServerError()
-            else:
+        if self.debug:
+            def app(env, start_response):
+                response = self.create_response(Request(env))
+                return response(env, start_response)
+            from werkzeug.debug import DebuggedApplication
+            app = DebuggedApplication(app, True)
+        else:
+            def app(env, start_response):
                 try:
-                    response = self.create_response(request)
+                    request = Request(env)
                 except Exception as e:
-                    log.exception(e)
-                    response = self.create_failsafe_response(request, e)
-            return response(env, start_response)
+                    log.critical(e)
+                    response = HTTPInternalServerError()
+                else:
+                    try:
+                        response = self.create_response(request)
+                    except Exception as e:
+                        log.exception(e)
+                        response = self.create_failsafe_response(request, e)
+                return response(env, start_response)
         return app
 
     def create_response(self, request):
+        ctx = self.ctx.Context()
+        ctx.http = Http(self, request)
         try:
-            ctx = self.ctx.Context()
-            ctx.http = Http(self, request)
-            try:
-                for name, route in self.routes.items():
-                    if route.handle(ctx):
-                        break
-                else:
-                    ctx.http.response = self.create_error_response(
-                        ctx, HTTPNotFound())
-            except (HTTPOk, HTTPRedirection) as success:
-                ctx.http.response = success
-            except Exception as e:
-                log.exception(e)
-                ctx.http.response = self.create_error_response(ctx, e)
-            response = ctx.http.response
-            ctx.destroy()
-            return response
+            for name, route in self.routes.items():
+                if route.handle(ctx):
+                    break
+            else:
+                ctx.http.response = self.create_error_response(
+                    ctx, HTTPNotFound())
+        except (HTTPOk, HTTPRedirection) as success:
+            ctx.http.response = success
         except Exception as e:
-            if ctx._active:
-                try:
-                    ctx.destroy(e)
-                except Exception:
-                    log.exception(e)
-                    pass
+            ctx.destroy(e)
             raise
-        finally:
-            assert not ctx or not ctx._active
+        response = ctx.http.response
+        ctx.destroy()
+        return response
 
     def create_failsafe_response(self, request, error=None):
         try:
             with self.ctx.Context() as ctx:
                 ctx.tx.doom()
                 ctx.http = Http(self, request)
+                ctx.http.exc = ctx.http.exception = error
                 response = self.create_error_response(ctx, error)
                 return response
         except Exception as e:

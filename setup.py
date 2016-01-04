@@ -65,5 +65,6 @@ setup(
     install_requires=[
         'score.init',
         'score.dbgsrv',
+        'werkzeug',
     ]
 )
