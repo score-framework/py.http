@@ -42,6 +42,7 @@ setup(
     url='http://score-framework.org',
     keywords='score framework url http',
     packages=['score', 'score.http'],
+    namespace_packages=['score'],
     zip_safe=False,
     license='LGPL',
     classifiers=[
@@ -66,5 +67,6 @@ setup(
         'score.init',
         'score.dbgsrv',
         'werkzeug',
+        'webob',
     ]
 )
