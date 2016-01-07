@@ -26,6 +26,7 @@
 
 from ._conf import ConfiguredRouterModule
 from score.init import parse_dotted_path, extract_conf, parse_bool
+import re
 
 
 defaults = {
@@ -44,14 +45,20 @@ def init(confdict, ctx):
     :confkey:`handler.*`
         TODO: document me
 
-    :confkey:`debug` :faint:`[default=False]
+    :confkey:`debug` :default:`False`
         TODO: document me
     """
     conf = dict(defaults.items())
     conf.update(confdict)
     router = parse_dotted_path(conf['router'])
     error_handlers = []
+    exception_handlers = []
     for error, handler in extract_conf(conf, 'handler.').items():
-        error_handlers[error] = parse_dotted_path(handler)
+        if re.match('\d(\d\d|XX)', error):
+            error_handlers[error] = parse_dotted_path(handler)
+        else:
+            error = parse_dotted_path(error)
+            exception_handlers[error] = handler
     debug = parse_bool(conf['debug'])
-    return ConfiguredRouterModule(router, error_handlers, ctx, debug)
+    return ConfiguredRouterModule(router, error_handlers, exception_handlers,
+                                  ctx, debug)

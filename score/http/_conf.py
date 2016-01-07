@@ -114,15 +114,23 @@ class Route:
 
 class ConfiguredRouterModule(ConfiguredModule):
 
-    def __init__(self, router, error_handlers, ctx, debug):
-        self.routes = OrderedDict((route.name, Route(self, route))
-                                  for route in router.sorted_routes())
+    def __init__(self, router, error_handlers, exception_handlers, ctx, debug):
+        self.router = router.clone()
         self.ctx = ctx
         self.error_handlers = error_handlers
+        self.exception_handlers = exception_handlers
         self.debug = debug
 
     def route(self, name):
         return self.routes[name]
+
+    def newroute(self, *args, **kwargs):
+        assert not self._finalized
+        return self.router.route(*args, **kwargs)
+
+    def _finalize(self, score):
+        self.routes = OrderedDict((route.name, Route(self, route))
+                                  for route in self.router.sorted_routes())
 
     def url(self, route, *args, **kwargs):
         """
@@ -166,8 +174,22 @@ class ConfiguredRouterModule(ConfiguredModule):
         except (HTTPOk, HTTPRedirection) as success:
             ctx.http.response = success
         except Exception as e:
-            ctx.destroy(e)
-            raise
+            for exc in self.exception_handlers:
+                # let's see if we have a dedicated exception handler for this
+                # kind of error
+                if isinstance(e, exc):
+                    try:
+                        self.exception_handlers[exc](ctx)
+                        break
+                    except (HTTPOk, HTTPRedirection) as success:
+                        ctx.http.response = success
+                        break
+                    except Exception as e2:
+                        ctx.destroy(e2)
+                        raise
+            else:
+                ctx.destroy(e)
+                raise
         response = ctx.http.response
         ctx.destroy()
         return response
