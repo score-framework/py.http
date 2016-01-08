@@ -24,9 +24,10 @@
 # the discretion of STRG.AT GmbH also the competent court, in whose district the
 # Licensee has his registered seat, an establishment or assets.
 
-import re
 import abc
 from functools import total_ordering
+import re
+import urllib
 
 
 class UrlGenerationException(Exception):
@@ -49,6 +50,9 @@ class UrlTemplate(abc.ABC):
             self.__regex = self._to_regex()
         return self.__regex
 
+    def match2vars(self, match):
+        return dict((var, match.group(var)) for var in self.variables)
+
     @property
     @abc.abstractmethod
     def variables(self):
@@ -65,6 +69,36 @@ class UrlTemplate(abc.ABC):
     @abc.abstractmethod
     def equals(self, other):
         pass
+
+
+@total_ordering
+class StaticUrl(UrlTemplate):
+
+    def __init__(self, string):
+        self.string = string
+
+    @property
+    def variables(self):
+        return []
+
+    def _to_regex(self):
+        return re.compile(re.escape(self.string))
+
+    def __lt__(self, other):
+        if isinstance(other, PatternUrlTemplate):
+            return True
+        if isinstance(other, StaticUrl):
+            return self.string < other.string
+        return NotImplemented
+
+    def equals(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, UrlTemplate):
+            return False
+        if self.regex.pattern == other.regex.pattern:
+            return True
+        return False
 
 
 class PatternUrlPart:
@@ -95,7 +129,7 @@ class PatternUrlTemplate(UrlTemplate):
             part = match.group(0)
             if part[0] != '{':
                 self.parts.append(PatternUrlPart(0, part))
-                self._regex_pattern += part
+                self._regex_pattern += re.escape(part)
                 continue
             if '>' in part:
                 name, pattern = part[1:-1].split('>', 1)
@@ -123,7 +157,7 @@ class PatternUrlTemplate(UrlTemplate):
         url = ''
         for part in self.parts:
             if part.variable:
-                url += kwargs[part.variable]
+                url += urllib.parse.quote(kwargs[part.variable])
             else:
                 url += part.pattern
         return url
