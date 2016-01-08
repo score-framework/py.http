@@ -24,8 +24,9 @@
 # the discretion of STRG.AT GmbH also the competent court, in whose district the
 # Licensee has his registered seat, an establishment or assets.
 
-from ._conf import ConfiguredRouterModule
-from score.init import parse_dotted_path, extract_conf, parse_bool
+from ._conf import ConfiguredHttpModule
+from score.init import (
+    parse_dotted_path, extract_conf, parse_bool, ConfigurationError)
 import re
 
 
@@ -50,6 +51,9 @@ def init(confdict, ctx):
     """
     conf = dict(defaults.items())
     conf.update(confdict)
+    if 'router' not in conf:
+        import score.http
+        raise ConfigurationError(score.http, 'No router provided')
     router = parse_dotted_path(conf['router'])
     error_handlers = []
     exception_handlers = []
@@ -60,5 +64,5 @@ def init(confdict, ctx):
             error = parse_dotted_path(error)
             exception_handlers[error] = handler
     debug = parse_bool(conf['debug'])
-    return ConfiguredRouterModule(router, error_handlers, exception_handlers,
-                                  ctx, debug)
+    return ConfiguredHttpModule(router, error_handlers, exception_handlers,
+                                ctx, debug)
