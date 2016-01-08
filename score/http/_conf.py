@@ -33,6 +33,7 @@ from webob.exc import (
     HTTPRedirection, HTTPOk, HTTPInternalServerError)
 import logging
 from collections import OrderedDict
+import urllib
 
 log = logging.getLogger('score.router')
 
@@ -43,6 +44,8 @@ class Route:
         self.conf = conf
         self.name = route.name
         self.urltpl = route.urltpl
+        if isinstance(self.urltpl, str):
+            self.urltpl = conf.url_class(self.urltpl)
         self.tpl = route.tpl
         self.callback = route.callback
         self.preconditions = route.preconditions
@@ -57,7 +60,10 @@ class Route:
             kwargs.update(self._vars2urlparts(*args, **kwargs))
         self._args2kwargs(args, kwargs)
         variables = self._kwargs2vars(kwargs)
-        return self.urltpl.generate(**variables)
+        url = self.urltpl.generate(**variables)
+        if '_query' in kwargs:
+            url += '?' + urllib.parse.urlencode(kwargs['_query'])
+        return url
 
     def _args2kwargs(self, args, kwargs):
         if not args:
@@ -77,10 +83,10 @@ class Route:
             if parts[0] not in kwargs:
                 raise MissingVariable(parts[0])
             current = kwargs[parts[0]]
-            missing = object()  # dummy object for testing if attr was found
             for part in parts[1:]:
-                current = getattr(current, part, missing)
-                if current is missing:
+                try:
+                    current = getattr(current, part)
+                except AttributeError:
                     raise InvalidVariable(
                         'Could not retrieve "%s" from %s' %
                         ('.'.join(parts[1:]), kwargs[parts[0]]))
@@ -91,10 +97,12 @@ class Route:
         match = self.urltpl.regex.match(ctx.http.request.path)
         if not match:
             return None
-        variables = dict((var, match.group(var))
-                         for var in self.urltpl.variables)
+        variables = self.urltpl.match2vars(match)
         if self._match2vars:
-            variables = self._match2vars(variables)
+            newvars = self._match2vars(variables)
+            if not newvars:
+                return None
+            variables = newvars
         for callback in self.preconditions:
             if not callback(ctx, **variables):
                 return None
@@ -107,12 +115,12 @@ class Route:
             if result is None:
                 result = {}
             assert isinstance(result, dict)
-            ctx.http.response.text = ctx.tpl.renderer.render(
+            ctx.http.response.text = ctx.conf.tpl.renderer.render_file(
                 self.tpl, result)
         return ctx.http.response
 
 
-class ConfiguredRouterModule(ConfiguredModule):
+class ConfiguredHttpModule(ConfiguredModule):
 
     def __init__(self, router, error_handlers, exception_handlers, ctx, debug):
         self.router = router.clone()
@@ -236,6 +244,7 @@ class Http:
         self._conf = conf
         self._response = None
         self.req = self.request = request
+        self.url = conf.url
 
     def redirect(self, url, permanent=False):
         if not permanent:
