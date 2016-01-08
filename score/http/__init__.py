@@ -25,10 +25,10 @@
 # Licensee has his registered seat, an establishment or assets.
 
 from ._init import init
-from ._conf import ConfiguredRouterModule
+from ._conf import ConfiguredHttpModule
 from .router import (RouterConfiguration, InitializationError, DependencyLoop,
                      DuplicateRouteDefinition)
 
 
-__all__ = ['init', 'ConfiguredRouterModule' 'RouterConfiguration',
-           'InitializationError', 'DependencyLoop', 'DuplicateRouteDefinition']
+__all__ = ('init', 'ConfiguredHttpModule' 'RouterConfiguration',
+           'InitializationError', 'DependencyLoop', 'DuplicateRouteDefinition')
