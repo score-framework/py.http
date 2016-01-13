@@ -53,9 +53,9 @@ class Route:
         self._vars2url = route._vars2url
         self._vars2urlparts = route._vars2urlparts
 
-    def url(self, *args, **kwargs):
+    def url(self, ctx, *args, **kwargs):
         if self._vars2url:
-            return self._vars2url(*args, **kwargs)
+            return self._vars2url(ctx, *args, **kwargs)
         if self._vars2urlparts:
             kwargs.update(self._vars2urlparts(*args, **kwargs))
         self._args2kwargs(args, kwargs)
@@ -71,7 +71,7 @@ class Route:
         argnames = inspect.getargspec(self.callback).args
         for i, name in enumerate(argnames):
             if name not in kwargs:
-                kwargs[name] = args[i]
+                kwargs[name] = args[i - 1]
 
     def _kwargs2vars(self, kwargs):
         variables = {}
@@ -115,6 +115,7 @@ class Route:
             if result is None:
                 result = {}
             assert isinstance(result, dict)
+            result['ctx'] = ctx
             ctx.http.response.text = ctx.conf.tpl.renderer.render_file(
                 self.tpl, result)
         return ctx.http.response
@@ -139,12 +140,18 @@ class ConfiguredHttpModule(ConfiguredModule):
     def _finalize(self, score):
         self.routes = OrderedDict((route.name, Route(self, route))
                                   for route in self.router.sorted_routes())
+        if not log.isEnabledFor(logging.DEBUG):
+            return
+        msg = 'Compiled routes:'
+        for name, route in self.routes.items():
+            msg += '\n - %s (%s)' % (name, route.urltpl)
+        log.debug(msg)
 
-    def url(self, route, *args, **kwargs):
+    def url(self, ctx, route, *args, **kwargs):
         """
         Shortcut for ``route(route).url(*args, **kwargs)``.
         """
-        return self.route(route).url(*args, **kwargs)
+        return self.route(route).url(ctx, *args, **kwargs)
 
     def mkwsgi(self):
         if self.debug:

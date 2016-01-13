@@ -55,8 +55,8 @@ def init(confdict, ctx):
         import score.http
         raise ConfigurationError(score.http, 'No router provided')
     router = parse_dotted_path(conf['router'])
-    error_handlers = []
-    exception_handlers = []
+    error_handlers = {}
+    exception_handlers = {}
     for error, handler in extract_conf(conf, 'handler.').items():
         if re.match('\d(\d\d|XX)', error):
             error_handlers[error] = parse_dotted_path(handler)
@@ -64,5 +64,12 @@ def init(confdict, ctx):
             error = parse_dotted_path(error)
             exception_handlers[error] = handler
     debug = parse_bool(conf['debug'])
-    return ConfiguredHttpModule(router, error_handlers, exception_handlers,
+    http = ConfiguredHttpModule(router, error_handlers, exception_handlers,
                                 ctx, debug)
+
+    def url(ctx):
+        def url(*args, **kwargs):
+            return http.url(ctx, *args, **kwargs)
+        return url
+    ctx.register('url', url)
+    return http

@@ -117,6 +117,8 @@ class RouterConfiguration:
             return route
         return capture_route
 
+    # TODO: add support for static routes
+
     def sorted_routes(self):
         graph = nx.DiGraph()
         constrained = set(r for r in self.routes.values()

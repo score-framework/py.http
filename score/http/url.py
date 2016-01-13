@@ -125,6 +125,7 @@ class PatternUrlTemplate(UrlTemplate):
         self.parts = []
         self._regex_pattern = ''
         self._var2regex = {}
+        self._regexname2var = {}
         for match in re.finditer(r'[^{]+|\{.+?\}', pattern):
             part = match.group(0)
             if part[0] != '{':
@@ -138,8 +139,25 @@ class PatternUrlTemplate(UrlTemplate):
                 pattern = '[^/]+'
             self._var2regex[name] = re.compile(pattern)
             self.parts.append(PatternUrlPart(10, pattern, name))
-            self._regex_pattern += '(?P<%s>%s)' % (name, pattern)
+            re_name = self._mkregexname(name)
+            self._regex_pattern += '(?P<%s>%s)' % (re_name, pattern)
         self._regex_pattern += '$'
+
+    def match2vars(self, match):
+        return dict((var, match.group(name))
+                    for name, var in self._regexname2var.items())
+
+    def _mkregexname(self, name):
+        re_name = re.sub(r'[^a-z0-9_]', '_', name)
+        if re_name in self._regexname2var:
+            i = 1
+            new_name = re_name + '_1'
+            while new_name in self._regexname2var:
+                i += 1
+                new_name = re_name + '_' + i
+            re_name = new_name
+        self._regexname2var[re_name] = name
+        return re_name
 
     @property
     def variables(self):
