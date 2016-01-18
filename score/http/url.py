@@ -50,7 +50,7 @@ class UrlTemplate(abc.ABC):
             self.__regex = self._to_regex()
         return self.__regex
 
-    def match2vars(self, match):
+    def match2vars(self, ctx, match):
         return dict((var, match.group(var)) for var in self.variables)
 
     @property
@@ -143,7 +143,7 @@ class PatternUrlTemplate(UrlTemplate):
             self._regex_pattern += '(?P<%s>%s)' % (re_name, pattern)
         self._regex_pattern += '$'
 
-    def match2vars(self, match):
+    def match2vars(self, ctx, match):
         return dict((var, match.group(name))
                     for name, var in self._regexname2var.items())
 

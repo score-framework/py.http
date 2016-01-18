@@ -93,20 +93,27 @@ class Route:
             variables[name] = current
         return variables
 
-    def handle(self, ctx):
+    def _handle(self, ctx):
         match = self.urltpl.regex.match(ctx.http.request.path)
         if not match:
+            log.debug('  %s: No regex match (%s)' %
+                      (self.name, self.urltpl.regex.pattern))
             return None
-        variables = self.urltpl.match2vars(match)
+        variables = self.urltpl.match2vars(ctx, match)
         if self._match2vars:
-            newvars = self._match2vars(variables)
+            newvars = self._match2vars(ctx, variables)
             if not newvars:
+                log.debug('  %s: registered match2vars() could not '
+                          'convert variables (%s)' % (self.name, variables))
                 return None
             variables = newvars
         for callback in self.preconditions:
             if not callback(ctx, **variables):
+                log.debug('  %s: precondition failed (%s)' %
+                          (self.name, callback))
                 return None
         result = self.callback(ctx, **variables)
+        log.debug('  %s: SUCCESS' % (self.name))
         if isinstance(result, Response):
             return result
         if isinstance(result, str):
@@ -117,7 +124,7 @@ class Route:
             assert isinstance(result, dict)
             result['ctx'] = ctx
             ctx.http.response.text = ctx.conf.tpl.renderer.render_file(
-                self.tpl, result)
+                ctx, self.tpl, result)
         return ctx.http.response
 
 
@@ -180,8 +187,10 @@ class ConfiguredHttpModule(ConfiguredModule):
         ctx = self.ctx.Context()
         ctx.http = Http(self, request)
         try:
+            log.debug('Received %s request for %s' %
+                      (request.method, request.path))
             for name, route in self.routes.items():
-                if route.handle(ctx):
+                if route._handle(ctx):
                     break
             else:
                 ctx.http.response = self.create_error_response(

@@ -31,11 +31,17 @@ from itertools import permutations
 
 
 class InitializationError(ScoreInitializationError):
-    pass
+
+    def __init__(self, msg):
+        import score.http
+        super().__init__(score.http, msg)
 
 
 class DependencyLoop(InitializationError):
-    pass
+
+    def __init__(self, loop):
+        super().__init__('Cannot resolve ordering of the following routes:\n' +
+                         '\n'.join(map(lambda x: ' - ' + x, loop)))
 
 
 class DuplicateRouteDefinition(InitializationError):
@@ -138,6 +144,8 @@ class RouterConfiguration:
                 # quite improbable case, but this scenario does exist (all
                 # routes unconstrained and equal, for example)
                 graph.add_edge(None, route.name)
+        for loop in nx.simple_cycles(graph):
+            raise DependencyLoop(loop)
         return list(self.routes[n]
                     for n in nx.topological_sort(graph)
                     if n is not None)
