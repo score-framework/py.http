@@ -68,8 +68,8 @@ class Route:
     def _args2kwargs(self, args, kwargs):
         if not args:
             return
-        argnames = inspect.getargspec(self.callback).args
-        for i, name in enumerate(argnames):
+        params = inspect.signature(self.callback).parameters
+        for i, name in enumerate(params):
             if name not in kwargs:
                 kwargs[name] = args[i - 1]
 
@@ -130,9 +130,11 @@ class Route:
 
 class ConfiguredHttpModule(ConfiguredModule):
 
-    def __init__(self, router, error_handlers, exception_handlers, ctx, debug):
-        self.router = router.clone()
+    def __init__(self, ctx, db, router, error_handlers,
+                 exception_handlers, debug):
         self.ctx = ctx
+        self.db = db
+        self.router = router.clone()
         self.error_handlers = error_handlers
         self.exception_handlers = exception_handlers
         self.debug = debug
@@ -147,12 +149,40 @@ class ConfiguredHttpModule(ConfiguredModule):
     def _finalize(self, score):
         self.routes = OrderedDict((route.name, Route(self, route))
                                   for route in self.router.sorted_routes())
+        for name, route in self.routes.items():
+            if not route._match2vars and self.db:
+                route._match2vars = self._mk_match2vars(route)
         if not log.isEnabledFor(logging.DEBUG):
             return
         msg = 'Compiled routes:'
         for name, route in self.routes.items():
             msg += '\n - %s (%s)' % (name, route.urltpl)
         log.debug(msg)
+
+    def _mk_match2vars(self, route):
+        param2cls = {}
+        parameters = inspect.signature(route.callback).parameters
+        for i, (name, param) in enumerate(parameters.items()):
+            if i == 0:
+                continue
+            if param.annotation is inspect.Parameter.empty:
+                return
+            if ('%s.id' % name) not in route.urltpl.variables:
+                # TODO: we could also test for other members in the variables
+                # list, that access a column with a unique-constraint.
+                return
+            param2cls[name] = param.annotation
+        if not param2cls:
+            return
+
+        def loader(ctx, matches):
+            result = {}
+            for var, cls in param2cls.items():
+                result[name] = ctx.db.query(cls).get(matches['%s.id' % var])
+                if result[name] is None:
+                    return
+            return result
+        return loader
 
     def url(self, ctx, route, *args, **kwargs):
         """

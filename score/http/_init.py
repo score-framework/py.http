@@ -35,7 +35,7 @@ defaults = {
 }
 
 
-def init(confdict, ctx):
+def init(confdict, ctx, db=None):
     """
     Initializes this module acoording to :ref:`our module initialization
     guidelines <module_initialization>` with the following configuration keys:
@@ -64,8 +64,8 @@ def init(confdict, ctx):
             error = parse_dotted_path(error)
             exception_handlers[error] = handler
     debug = parse_bool(conf['debug'])
-    http = ConfiguredHttpModule(router, error_handlers, exception_handlers,
-                                ctx, debug)
+    http = ConfiguredHttpModule(
+        ctx, db, router, error_handlers, exception_handlers, debug)
 
     def url(ctx):
         def url(*args, **kwargs):
