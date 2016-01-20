@@ -24,10 +24,9 @@
 # the discretion of STRG.AT GmbH also the competent court, in whose district the
 # Licensee has his registered seat, an establishment or assets.
 
-from ._init import init
-from ._conf import ConfiguredHttpModule
-from .router import (RouterConfiguration, InitializationError, DependencyLoop,
-                     DuplicateRouteDefinition)
+from ._init import init, ConfiguredHttpModule
+from ._conf import (RouterConfiguration, InitializationError, DependencyLoop,
+                    DuplicateRouteDefinition)
 
 
 __all__ = ('init', 'ConfiguredHttpModule' 'RouterConfiguration',
