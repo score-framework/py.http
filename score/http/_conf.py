@@ -36,7 +36,7 @@ import logging
 from collections import OrderedDict
 import urllib
 
-log = logging.getLogger('score.router')
+log = logging.getLogger('score.http.router')
 
 
 class Route:
@@ -162,12 +162,12 @@ class ConfiguredHttpModule(ConfiguredModule):
         for name, route in self.routes.items():
             if not route._match2vars and self.db:
                 route._match2vars = self._mk_match2vars(route)
-        if not log.isEnabledFor(logging.DEBUG):
+        if not log.isEnabledFor(logging.INFO):
             return
         msg = 'Compiled routes:'
         for name, route in self.routes.items():
             msg += '\n - %s (%s)' % (name, route.urltpl)
-        log.debug(msg)
+        log.info(msg)
 
     def _mk_match2vars(self, route):
         param2cls = {}
