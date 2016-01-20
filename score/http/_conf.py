@@ -103,7 +103,7 @@ class Route:
             variables[name] = current
         return variables
 
-    def _handle(self, ctx):
+    def handle(self, ctx):
         match = self.urltpl.regex.match(ctx.http.request.path)
         if not match:
             log.debug('  %s: No regex match (%s)' %
@@ -156,11 +156,11 @@ class ConfiguredHttpModule(ConfiguredModule):
         assert not self._finalized
         return self.router.route(*args, **kwargs)
 
-    def _finalize(self, score):
+    def _finalize(self, db=None):
         self.routes = OrderedDict((route.name, Route(self, route))
                                   for route in self.router.sorted_routes())
         for name, route in self.routes.items():
-            if not route._match2vars and self.db:
+            if not route._match2vars and db:
                 route._match2vars = self._mk_match2vars(route)
         if not log.isEnabledFor(logging.INFO):
             return
@@ -223,14 +223,17 @@ class ConfiguredHttpModule(ConfiguredModule):
                 return response(env, start_response)
         return app
 
+    def create_ctx_member(self, request):
+        return Http(self, request)
+
     def create_response(self, request):
         ctx = self.ctx.Context()
-        ctx.http = Http(self, request)
+        ctx.http = self.create_ctx_member(request)
         try:
             log.debug('Received %s request for %s' %
                       (request.method, request.path))
             for name, route in self.routes.items():
-                if route._handle(ctx):
+                if route.handle(ctx):
                     break
             else:
                 ctx.http.response = self.create_error_response(
