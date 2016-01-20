@@ -25,7 +25,7 @@
 # Licensee has his registered seat, an establishment or assets.
 
 from score.init import (
-    parse_dotted_path, extract_conf, parse_bool, ConfigurationError)
+    parse_list, parse_dotted_path, extract_conf, parse_bool, ConfigurationError)
 import re
 from score.init import ConfiguredModule
 import inspect
@@ -42,6 +42,7 @@ import urllib
 
 defaults = {
     'debug': False,
+    'preroutes': [],
 }
 
 
@@ -51,6 +52,9 @@ def init(confdict, ctx, db=None):
     guidelines <module_initialization>` with the following configuration keys:
 
     :confkey:`router`
+        TODO: document me
+
+    :confkey:`preroutes`
         TODO: document me
 
     :confkey:`handler.*`
@@ -65,6 +69,7 @@ def init(confdict, ctx, db=None):
         import score.http
         raise ConfigurationError(score.http, 'No router provided')
     router = parse_dotted_path(conf['router'])
+    preroutes = list(map(parse_dotted_path, parse_list(conf['preroutes'])))
     error_handlers = {}
     exception_handlers = {}
     for error, handler in extract_conf(conf, 'handler.').items():
@@ -75,13 +80,14 @@ def init(confdict, ctx, db=None):
             exception_handlers[error] = handler
     debug = parse_bool(conf['debug'])
     http = ConfiguredHttpModule(
-        ctx, db, router, error_handlers, exception_handlers, debug)
+        ctx, db, router, preroutes, error_handlers, exception_handlers, debug)
 
-    def url(ctx):
+    def constructor(ctx):
         def url(*args, **kwargs):
             return http.url(ctx, *args, **kwargs)
         return url
-    ctx.register('url', url)
+
+    ctx.register('url', constructor)
     return http
 
 
@@ -171,9 +177,13 @@ class Route:
                 log.debug('  %s: precondition failed (%s)' %
                           (self.name, callback))
                 return None
+        log.debug('  %s: SUCCESS, invoking callback' % (self.name))
+        ctx.http.route = self
+        for preroute in self.conf.preroutes:
+            preroute(ctx)
         result = self.callback(ctx, **variables)
-        log.debug('  %s: SUCCESS' % (self.name))
         if isinstance(result, Response):
+            ctx.http.response = result
             return result
         if isinstance(result, str):
             ctx.http.response.text = result
@@ -182,18 +192,19 @@ class Route:
                 result = {}
             assert isinstance(result, dict)
             result['ctx'] = ctx
-            ctx.http.response.text = ctx.conf.tpl.renderer.render_file(
+            ctx.http.response.text = ctx.score.tpl.renderer.render_file(
                 ctx, self.tpl, result)
         return ctx.http.response
 
 
 class ConfiguredHttpModule(ConfiguredModule):
 
-    def __init__(self, ctx, db, router, error_handlers,
+    def __init__(self, ctx, db, router, preroutes, error_handlers,
                  exception_handlers, debug):
         self.ctx = ctx
         self.db = db
         self.router = router.clone()
+        self.preroutes = preroutes
         self.error_handlers = error_handlers
         self.exception_handlers = exception_handlers
         self.debug = debug
