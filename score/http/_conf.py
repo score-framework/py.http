@@ -26,6 +26,7 @@
 
 from score.init import ConfiguredModule
 import inspect
+import functools
 from .url import MissingVariable, InvalidVariable
 from webob import Request, Response
 from webob.exc import (
@@ -52,6 +53,15 @@ class Route:
         self._match2vars = route._match2vars
         self._vars2url = route._vars2url
         self._vars2urlparts = route._vars2urlparts
+
+    @property
+    def callback(self):
+        return self._callback
+
+    @callback.setter
+    def callback(self, callback):
+        self._callback = callback
+        functools.update_wrapper(self, self.callback)
 
     def url(self, ctx, *args, **kwargs):
         if self._vars2url:

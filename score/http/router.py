@@ -28,6 +28,7 @@ from .url import UrlTemplate, PatternUrlTemplate
 import networkx as nx
 from score.init import InitializationError as ScoreInitializationError
 from itertools import permutations
+import functools
 
 
 class InitializationError(ScoreInitializationError):
@@ -65,6 +66,15 @@ class RouteConfiguration:
         self._vars2urlparts = None
         self.before = []
         self.after = []
+
+    @property
+    def callback(self):
+        return self._callback
+
+    @callback.setter
+    def callback(self, callback):
+        self._callback = callback
+        functools.update_wrapper(self, self.callback)
 
     def __call__(self, *args, **kwargs):
         return self.callback(*args, **kwargs)
