@@ -43,6 +43,7 @@ import urllib
 defaults = {
     'debug': False,
     'preroutes': [],
+    'urlbase': None,
 }
 
 
@@ -63,7 +64,7 @@ def init(confdict, ctx, db=None):
     :confkey:`debug` :default:`False`
         TODO: document me
 
-    :confkey:`domain`
+    :confkey:`urlbase`
         TODO: document me
     """
     conf = dict(defaults.items())
@@ -82,8 +83,11 @@ def init(confdict, ctx, db=None):
             error = parse_dotted_path(error)
             exception_handlers[error] = handler
     debug = parse_bool(conf['debug'])
+    if not conf['urlbase']:
+        conf['urlbase'] = ''
     http = ConfiguredHttpModule(
-        ctx, db, router, preroutes, error_handlers, exception_handlers, debug)
+        ctx, db, router, preroutes, error_handlers, exception_handlers, debug,
+        conf['urlbase'])
 
     def constructor(ctx):
         def url(*args, **kwargs):
@@ -122,16 +126,36 @@ class Route:
         functools.update_wrapper(self, self.callback)
 
     def url(self, ctx, *args, **kwargs):
-        if self._vars2url:
-            return self._vars2url(ctx, *args, **kwargs)
-        if self._vars2urlparts:
-            kwargs.update(self._vars2urlparts(*args, **kwargs))
-        self._args2kwargs(args, kwargs)
-        variables = self._kwargs2vars(kwargs)
-        url = self.urltpl.generate(**variables)
+        urlbase = ''
+        absolute = True
+        if '_absolute' in kwargs:
+            absolute = kwargs['_absolute']
+            del kwargs['_absolute']
+            assert '_relative' not in kwargs
+        elif '_relative' in kwargs:
+            absolute = not kwargs['_relative']
+            del kwargs['_relative']
+        query = ''
         if '_query' in kwargs:
-            url += '?' + urllib.parse.urlencode(kwargs['_query'])
-        return url
+            query = '?' + urllib.parse.urlencode(kwargs['_query'])
+            del kwargs['_query']
+        if absolute:
+            try:
+                urlbase = kwargs['_urlbase']
+                del kwargs['_urlbase']
+            except KeyError:
+                urlbase = self.conf.urlbase
+        if self._vars2url:
+            url = self._vars2url(ctx, *args, **kwargs)
+        else:
+            if self._vars2urlparts:
+                kwargs.update(self._vars2urlparts(*args, **kwargs))
+            self._args2kwargs(args, kwargs)
+            variables = self._kwargs2vars(kwargs)
+            url = self.urltpl.generate(**variables)
+        if urlbase:
+            url = urlbase + url
+        return url + query
 
     def _args2kwargs(self, args, kwargs):
         if not args:
@@ -206,7 +230,7 @@ class Route:
 class ConfiguredHttpModule(ConfiguredModule):
 
     def __init__(self, ctx, db, router, preroutes, error_handlers,
-                 exception_handlers, debug):
+                 exception_handlers, debug, urlbase):
         self.ctx = ctx
         self.db = db
         self.router = router.clone()
@@ -214,6 +238,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         self.error_handlers = error_handlers
         self.exception_handlers = exception_handlers
         self.debug = debug
+        self.urlbase = urlbase
 
     def route(self, name):
         return self.routes[name]
