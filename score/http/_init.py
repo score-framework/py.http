@@ -210,7 +210,7 @@ class Route:
             preroute(ctx)
         try:
             result = self.callback(ctx, **variables)
-        except Response as response:
+        except HTTPException as response:
             result = response
         if isinstance(result, Response):
             ctx.http.response = result
