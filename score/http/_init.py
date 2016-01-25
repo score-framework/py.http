@@ -62,6 +62,9 @@ def init(confdict, ctx, db=None):
 
     :confkey:`debug` :default:`False`
         TODO: document me
+
+    :confkey:`domain`
+        TODO: document me
     """
     conf = dict(defaults.items())
     conf.update(confdict)
@@ -181,7 +184,10 @@ class Route:
         ctx.http.route = self
         for preroute in self.conf.preroutes:
             preroute(ctx)
-        result = self.callback(ctx, **variables)
+        try:
+            result = self.callback(ctx, **variables)
+        except Response as response:
+            result = response
         if isinstance(result, Response):
             ctx.http.response = result
             return result
@@ -298,8 +304,6 @@ class ConfiguredHttpModule(ConfiguredModule):
             else:
                 ctx.http.response = self.create_error_response(
                     ctx, HTTPNotFound())
-        except (HTTPOk, HTTPRedirection) as success:
-            ctx.http.response = success
         except Exception as e:
             for exc in self.exception_handlers:
                 # let's see if we have a dedicated exception handler for this
