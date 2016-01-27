@@ -379,15 +379,24 @@ class ConfiguredHttpModule(ConfiguredModule):
         if isinstance(error, HTTPException):
             code = error.code
         handler = None
-        if code in self.error_handlers:
-            handler = self.error_handlers[code]
+        if str(code) in self.error_handlers:
+            handler = self.error_handlers[str(code)]
         elif '%dXX' % (code % 100) in self.error_handlers:
             handler = self.error_handlers['%dXX' % (code % 100)]
         if not handler:
             if isinstance(error, HTTPException):
                 return error
             return HTTPInternalServerError()
-        return handler(ctx, error)
+        try:
+            result = handler(ctx, error)
+        except HTTPException as response:
+            result = response
+        if isinstance(result, Response):
+            ctx.http.response = result
+            return result
+        if isinstance(result, str):
+            ctx.http.response.text = result
+        return ctx.http.response
 
 
 class Http:
