@@ -199,6 +199,10 @@ class Route:
                           'convert variables (%s)' % (self.name, variables))
                 return None
             variables = newvars
+        else:
+            # remove matches containing dots
+            variables = dict((k, v)
+                             for (k, v) in variables.items() if '.' not in k)
         for callback in self.preconditions:
             if not callback(ctx, **variables):
                 log.debug('  %s: precondition failed (%s)' %
