@@ -186,12 +186,7 @@ class Route:
             variables[name] = current
         return variables
 
-    def handle(self, ctx):
-        match = self.urltpl.regex.match(ctx.http.request.path)
-        if not match:
-            log.debug('  %s: No regex match (%s)' %
-                      (self.name, self.urltpl.regex.pattern))
-            return None
+    def _call_match2vars(self, ctx, match):
         variables = self.urltpl.match2vars(ctx, match)
         if self._match2vars:
             newvars = self._match2vars(ctx, variables)
@@ -210,8 +205,16 @@ class Route:
                           (self.name, callback))
                 return None
         log.debug('  %s: SUCCESS, invoking callback' % (self.name))
-        ctx.http.route = self
+
+    def handle(self, ctx):
+        match = self.urltpl.regex.match(ctx.http.request.path)
+        if not match:
+            log.debug('  %s: No regex match (%s)' %
+                      (self.name, self.urltpl.regex.pattern))
+            return None
         try:
+            variables = self._call_match2vars(ctx, match)
+            ctx.http.route = self
             for preroute in self.conf.preroutes:
                 preroute(ctx)
             result = self.callback(ctx, **variables)
