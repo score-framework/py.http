@@ -137,7 +137,8 @@ class Route:
             del kwargs['_relative']
         query = ''
         if '_query' in kwargs:
-            query = '?' + urllib.parse.urlencode(kwargs['_query'])
+            if kwargs['_query']:
+                query = '?' + urllib.parse.urlencode(kwargs['_query'])
             del kwargs['_query']
         if absolute:
             try:
