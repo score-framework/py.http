@@ -35,19 +35,19 @@ def main():
 
 
 @main.command()
-@click.argument('ini', type=click.Path(file_okay=True, dir_okay=False))
-def serve(ini):
-    score.init.init_logging_from_file(ini)
-    score.dbgsrv.Server(Runner(ini)).start()
+@click.pass_context
+def serve(clickctx):
+    conf = clickctx.obj['conf']
+    score.init.init_logging_from_file(conf.path)
+    score.dbgsrv.Server(Runner(conf)).start()
 
 
 class Runner(score.dbgsrv.SocketServerRunner):
 
-    def __init__(self, ini):
-        self.ini = ini
+    def __init__(self, conf):
+        self.conf = conf
 
     def _mkserver(self):
-        conf = score.init.init_from_file(self.ini)
-        app = conf.http.mkwsgi()
+        app = self.conf.load('http').mkwsgi()
         from werkzeug.serving import make_server
         return make_server('127.0.0.1', 8080, app)
