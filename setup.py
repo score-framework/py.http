@@ -64,8 +64,8 @@ setup(
         ]
     },
     install_requires=[
-        'score.init',
-        'score.dbgsrv',
+        'score.init >= 0.3',
+        'score.dbgsrv >= 0.1',
         'werkzeug',
         'webob',
     ]
