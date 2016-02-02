@@ -204,16 +204,20 @@ class Route:
                 log.debug('  %s: precondition failed (%s)' %
                           (self.name, callback))
                 return None
-        log.debug('  %s: SUCCESS, invoking callback' % (self.name))
+        return variables
 
     def handle(self, ctx):
-        match = self.urltpl.regex.match(ctx.http.request.path)
+        request = ctx.http.request
+        match = self.urltpl.regex.match(request.path)
         if not match:
             log.debug('  %s: No regex match (%s)' %
                       (self.name, self.urltpl.regex.pattern))
             return None
         try:
             variables = self._call_match2vars(ctx, match)
+            if variables is None:
+                return None
+            log.debug('  %s: SUCCESS, invoking callback' % (self.name))
             ctx.http.route = self
             for preroute in self.conf.preroutes:
                 preroute(ctx)
@@ -269,29 +273,58 @@ class ConfiguredHttpModule(ConfiguredModule):
         log.info(msg)
 
     def _mk_match2vars(self, route):
-        param2cls = {}
+        param2clsid = {}
         parameters = inspect.signature(route.callback).parameters
+        test_redirect = False
         for i, (name, param) in enumerate(parameters.items()):
             if i == 0:
                 continue
             if param.annotation is inspect.Parameter.empty:
                 return
-            if ('%s.id' % name) not in route.urltpl.variables:
-                # TODO: we could also test for other members in the variables
-                # list, that access a column with a unique-constraint.
+            cls = param.annotation
+            if not issubclass(cls, self.db.Base):
                 return
-            param2cls[name] = param.annotation
-        if not param2cls:
+            if ('%s.id' % name) in route.urltpl.variables:
+                idcol = 'id'
+            else:
+                table = cls.__table__
+                for var in route.urltpl.variables:
+                    match = re.match('%s\.([^.]+)$' % name, var)
+                    if not match:
+                        continue
+                    col = match.group(1)
+                    if table.columns.get(col).unique:
+                        idcol = col
+                        break
+                else:
+                    return
+            if not test_redirect:
+                for var in route.urltpl.variables:
+                    if var == '%s.%s' % (name, idcol):
+                        continue
+                    if var.startswith('%s.' % name):
+                        test_redirect = True
+                        break
+            param2clsid[name] = (cls, idcol)
+        if not param2clsid:
             return
 
-        def loader(ctx, matches):
+        def match2vars(ctx, matches):
             result = {}
-            for var, cls in param2cls.items():
-                result[name] = ctx.db.query(cls).get(matches['%s.id' % var])
+            for var, (cls, idcol) in param2clsid.items():
+                id = matches['%s.%s' % (var, idcol)]
+                result[name] = ctx.db.query(cls).\
+                    filter(getattr(cls, idcol) == id).\
+                    first()
                 if result[name] is None:
                     return
+            if test_redirect and ctx.http.request.method == 'GET':
+                realurl = route.url(ctx, _query=ctx.http.request.GET,
+                                    _relative=True, **result)
+                if ctx.http.request.path_qs != realurl:
+                    ctx.http.redirect(realurl)
             return result
-        return loader
+        return match2vars
 
     def url(self, ctx, route, *args, **kwargs):
         """
