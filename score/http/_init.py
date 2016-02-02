@@ -319,10 +319,13 @@ class ConfiguredHttpModule(ConfiguredModule):
                 if result[name] is None:
                     return
             if test_redirect and ctx.http.request.method == 'GET':
-                realurl = route.url(ctx, _query=ctx.http.request.GET,
-                                    _relative=True, **result)
-                if ctx.http.request.path_qs != realurl:
-                    ctx.http.redirect(realurl)
+                realpath = route.url(ctx, _relative=True, **result)
+                if ctx.http.request.path != realpath:
+                    # need to create the url a second time to incorporate the
+                    # query string
+                    ctx.http.redirect(route.url(
+                        ctx, _query=ctx.http.request.GET,
+                        _relative=True, **result))
             return result
         return match2vars
 
