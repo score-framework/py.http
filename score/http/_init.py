@@ -150,7 +150,7 @@ class Route:
             url = self._vars2url(ctx, *args, **kwargs)
         else:
             if self._vars2urlparts:
-                kwargs.update(self._vars2urlparts(*args, **kwargs))
+                kwargs.update(self._vars2urlparts(ctx, *args, **kwargs))
             self._args2kwargs(args, kwargs)
             variables = self._kwargs2vars(kwargs)
             url = self.urltpl.generate(**variables)
