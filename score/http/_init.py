@@ -44,6 +44,7 @@ defaults = {
     'debug': False,
     'preroutes': [],
     'urlbase': None,
+    'port': 8080,
 }
 
 
@@ -66,6 +67,9 @@ def init(confdict, ctx, db=None):
 
     :confkey:`urlbase`
         TODO: document me
+
+    :confkey:`port`
+        TODO: document me
     """
     conf = dict(defaults.items())
     conf.update(confdict)
@@ -87,7 +91,7 @@ def init(confdict, ctx, db=None):
         conf['urlbase'] = ''
     http = ConfiguredHttpModule(
         ctx, db, router, preroutes, error_handlers, exception_handlers, debug,
-        conf['urlbase'])
+        conf['urlbase'], int(conf['port']))
 
     def constructor(ctx):
         def url(*args, **kwargs):
@@ -242,7 +246,7 @@ class Route:
 class ConfiguredHttpModule(ConfiguredModule):
 
     def __init__(self, ctx, db, router, preroutes, error_handlers,
-                 exception_handlers, debug, urlbase):
+                 exception_handlers, debug, urlbase, port):
         self.ctx = ctx
         self.db = db
         self.router = router.clone()
@@ -251,6 +255,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         self.exception_handlers = exception_handlers
         self.debug = debug
         self.urlbase = urlbase
+        self.port = port
 
     def route(self, name):
         return self.routes[name]
@@ -343,7 +348,7 @@ class ConfiguredHttpModule(ConfiguredModule):
 
                 def _mkserver(runner):
                     from werkzeug.serving import make_server
-                    return make_server('127.0.0.1', 8080, self.mkwsgi())
+                    return make_server('127.0.0.1', self.port, self.mkwsgi())
 
             self._serve_runners = [Runner()]
 
