@@ -140,6 +140,7 @@ class RouterConfiguration:
         constrained = set(r for r in self.routes.values()
                           if r.before or r.after)
         unconstrained = set(self.routes.values()) - constrained
+        self._check_constraints(constrained, unconstrained)
         for r1, r2 in permutations(unconstrained, 2):
             if r1.urltpl.equals(r2.urltpl):
                 continue
@@ -160,20 +161,41 @@ class RouterConfiguration:
                     for n in nx.topological_sort(graph)
                     if n is not None)
 
+    def _check_constraints(self, constrained, unconstrained):
+        for route in constrained.copy():
+            actually_constrained = False
+            for before in route.before:
+                if before not in self.routes:
+                    raise InitializationError(
+                        'Given before-dependency not found: (*%s* -> %s)' %
+                        (before, route))
+                if self.routes[before].urltpl.equals(route.urltpl):
+                    actually_constrained = True
+                    break
+                if self.routes[before].urltpl > route.urltpl:
+                    actually_constrained = True
+                    break
+            for after in route.after:
+                if after not in self.routes:
+                    raise InitializationError(
+                        'Given after-dependency not found: (%s -> *%s*)' %
+                        (route, after))
+                if self.routes[after].urltpl.equals(route.urltpl):
+                    actually_constrained = True
+                    break
+                if self.routes[after].urltpl < route.urltpl:
+                    actually_constrained = True
+                    break
+            if not actually_constrained:
+                constrained.remove(route)
+                unconstrained.add(route)
+
     def _insert_constrained(self, graph, route):
         for before in route.before:
-            if before not in self.routes:
-                raise InitializationError(
-                    'Given before-dependency not found: (*%s* -> %s)' %
-                    (before, route))
             loop = self._insert_before(graph, route, before)
             if loop:
                 raise DependencyLoop(loop)
         for after in route.after:
-            if after not in self.routes:
-                raise InitializationError(
-                    'Given after-dependency not found: (%s -> *%s*)' %
-                    (route, after))
             loop = self._insert_after(graph, route, after)
             if loop:
                 raise DependencyLoop(loop)
