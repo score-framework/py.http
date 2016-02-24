@@ -335,6 +335,20 @@ class ConfiguredHttpModule(ConfiguredModule):
         """
         return self.route(route).url(ctx, *args, **kwargs)
 
+    def get_serve_runners(self):
+        if not hasattr(self, '_serve_runners'):
+            import score.serve
+
+            class Runner(score.serve.SocketServerRunner):
+
+                def _mkserver(runner):
+                    from werkzeug.serving import make_server
+                    return make_server('127.0.0.1', 8080, self.mkwsgi())
+
+            self._serve_runners = [Runner()]
+
+        return self._serve_runners
+
     def mkwsgi(self):
         if self.debug:
             def app(env, start_response):
