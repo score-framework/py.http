@@ -236,7 +236,8 @@ class Route:
         elif self.tpl:
             if result is None:
                 result = {}
-            assert isinstance(result, dict)
+            else:
+                assert isinstance(result, dict)
             result['ctx'] = ctx
             ctx.http.response.text = ctx.score.tpl.renderer.render_file(
                 ctx, self.tpl, result)
