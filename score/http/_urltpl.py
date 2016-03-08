@@ -25,7 +25,6 @@
 # Licensee has his registered seat, an establishment or assets.
 
 import abc
-from functools import total_ordering
 import re
 import urllib
 
@@ -71,7 +70,6 @@ class UrlTemplate(abc.ABC):
         pass
 
 
-@total_ordering
 class StaticUrl(UrlTemplate):
 
     def __init__(self, string):
@@ -112,7 +110,6 @@ class PatternUrlPart:
         return 'UrlPart(pattern=%s)' % (self.pattern)
 
 
-@total_ordering
 class PatternUrlTemplate(UrlTemplate):
 
     def __init__(self, pattern):
