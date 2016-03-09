@@ -91,6 +91,8 @@ would assume that the *hello/name* route was requested with an empty string as
 *name*.
 
 
+.. _http_route_sorting:
+
 Route Sorting
 -------------
 
@@ -398,7 +400,6 @@ Once we know which route will be called to handle the request, any registered
 function that accepts a :term:`context`, which will be called before the actual
 route. They can be used to implement login, access control, or any other
 feature independant of the current URL.
-
 
 
 .. _http_routing_callroute:

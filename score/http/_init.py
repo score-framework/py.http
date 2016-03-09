@@ -55,10 +55,12 @@ def init(confdict, ctx, db=None):
     guidelines <module_initialization>` with the following configuration keys:
 
     :confkey:`router`
-        TODO: document me
+        Path to the :class:`RouteConfiguration` containing the list of routes to
+        compile.
 
     :confkey:`preroutes`
-        TODO: document me
+        List of :term:`preroute` functions to call before invoking the actual
+        route.  See :ref:`http_routing` for details.
 
     :confkey:`handler.*`
         TODO: document me
