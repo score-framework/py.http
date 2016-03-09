@@ -243,7 +243,7 @@ class Route:
             else:
                 assert isinstance(result, dict)
             result['ctx'] = ctx
-            ctx.http.response.text = ctx.score.tpl.renderer.render_file(
+            ctx.http.response.text = self.conf.tpl.renderer.render_file(
                 ctx, self.tpl, result)
         return ctx.http.response
 
@@ -270,7 +270,8 @@ class ConfiguredHttpModule(ConfiguredModule):
         assert not self._finalized
         return self.router.route(*args, **kwargs)
 
-    def _finalize(self, db=None):
+    def _finalize(self, db=None, tpl=None):
+        self.tpl = tpl
         self.routes = OrderedDict((route.name, Route(self, route))
                                   for route in self.router.sorted_routes())
         for name, route in self.routes.items():
@@ -304,6 +305,8 @@ class ConfiguredHttpModule(ConfiguredModule):
                     if not match:
                         continue
                     col = match.group(1)
+                    # TODO: handle the case where the column is part of a parent
+                    # table
                     if table.columns.get(col).unique:
                         idcol = col
                         break
