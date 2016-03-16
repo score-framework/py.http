@@ -284,7 +284,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         msg = 'Compiled routes:'
         for name, route in self.routes.items():
             msg += '\n - %s (%s)' % (name, route.urltpl)
-        log.info(msg)
+        log.debug(msg)
 
     def _mk_match2vars(self, route):
         param2clsid = {}
