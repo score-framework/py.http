@@ -42,7 +42,7 @@ class DependencyLoop(InitializationError):
 
     def __init__(self, loop):
         super().__init__('Cannot resolve ordering of the following routes:\n' +
-                         '\n'.join(map(lambda x: ' - ' + x, loop)))
+                         '\n'.join(map(lambda x: ' - ' + x[0], loop)))
 
 
 class DuplicateRouteDefinition(InitializationError):
@@ -140,7 +140,6 @@ class RouterConfiguration:
         constrained = set(r for r in self.routes.values()
                           if r.before or r.after)
         unconstrained = set(self.routes.values()) - constrained
-        self._check_constraints(constrained, unconstrained)
         for r1, r2 in permutations(unconstrained, 2):
             if r1.urltpl.equals(r2.urltpl):
                 continue
@@ -155,40 +154,14 @@ class RouterConfiguration:
                 # quite improbable case, but this scenario does exist (all
                 # routes unconstrained and equal, for example)
                 graph.add_edge(None, route.name)
-        for loop in nx.simple_cycles(graph):
+        try:
+            loop = nx.find_cycle(graph)
             raise DependencyLoop(loop)
+        except nx.NetworkXNoCycle:
+            pass
         return list(self.routes[n]
                     for n in nx.topological_sort(graph)
                     if n is not None)
-
-    def _check_constraints(self, constrained, unconstrained):
-        for route in constrained.copy():
-            actually_constrained = False
-            for before in route.before:
-                if before not in self.routes:
-                    raise InitializationError(
-                        'Given before-dependency not found: (*%s* -> %s)' %
-                        (before, route))
-                if self.routes[before].urltpl.equals(route.urltpl):
-                    actually_constrained = True
-                    break
-                if self.routes[before].urltpl > route.urltpl:
-                    actually_constrained = True
-                    break
-            for after in route.after:
-                if after not in self.routes:
-                    raise InitializationError(
-                        'Given after-dependency not found: (%s -> *%s*)' %
-                        (route, after))
-                if self.routes[after].urltpl.equals(route.urltpl):
-                    actually_constrained = True
-                    break
-                if self.routes[after].urltpl < route.urltpl:
-                    actually_constrained = True
-                    break
-            if not actually_constrained:
-                constrained.remove(route)
-                unconstrained.add(route)
 
     def _insert_constrained(self, graph, route):
         for before in route.before:
@@ -201,31 +174,44 @@ class RouterConfiguration:
                 raise DependencyLoop(loop)
 
     def _insert_before(self, graph, route, other):
+        print('insert_before(%s, %s)' % (route.name, other))
         graph.add_edge(route.name, other)
-        for loop in nx.simple_cycles(graph):
+        try:
+            loop = nx.find_cycle(graph, route.name)
             graph.remove_edge(route.name, other)
             return loop
+        except nx.NetworkXNoCycle:
+            pass
         for predecessor in graph.predecessors_iter(other):
             preroute = self.routes[predecessor]
             if route.urltpl < preroute.urltpl:
                 self._insert_before(graph, route, predecessor)
             elif route.urltpl > preroute.urltpl:
                 graph.add_edge(predecessor, route.name)
-                if any(nx.simple_cycles(graph)):
+                try:
+                    nx.find_cycle(graph, predecessor)
                     graph.remove_edge(predecessor, route.name)
+                except nx.NetworkXNoCycle:
+                    pass
         return None
 
     def _insert_after(self, graph, route, other):
         graph.add_edge(other, route.name)
-        for loop in nx.simple_cycles(graph):
-            graph.remove_edge(other, route.name)
+        try:
+            loop = nx.find_cycle(graph, other)
+            graph.remove_edge(route.name, other)
             return loop
+        except nx.NetworkXNoCycle:
+            pass
         for successor in graph.successors_iter(other):
             postroute = self.routes[successor]
             if route.urltpl > postroute.urltpl:
                 self._insert_after(graph, route, successor)
             elif route.urltpl < postroute.urltpl:
                 graph.add_edge(route.name, successor)
-                if any(nx.simple_cycles(graph)):
+                try:
+                    nx.find_cycle(graph, route.name)
                     graph.remove_edge(route.name, successor)
+                except nx.NetworkXNoCycle:
+                    pass
         return None
