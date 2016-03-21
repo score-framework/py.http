@@ -2,14 +2,14 @@ from score.ctx import init as init_ctx
 from score.http import (
     init, RouterConfiguration as Router, DependencyLoop,
     DuplicateRouteDefinition)
-from score.http.router import RouteConfiguration
+from score.http._conf import RouteConfiguration
 import pytest
 from unittest.mock import Mock
 
 
 def test_empty_router():
     router = Router()
-    init({'router': router}, ctx=init_ctx())
+    init({'router': router}, ctx=init_ctx())._finalize()
 
 
 def test_adding_routes():
@@ -26,6 +26,7 @@ def test_simple_route_comparison_1():
     router.route('a', '/a')(Mock())
     router.route('b', '/b')(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -40,6 +41,7 @@ def test_simple_route_comparison_2():
     router.route('b', '/b')(Mock())
     router.route('a', '/a')(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -58,6 +60,7 @@ def test_custom_order_1():
     b = router.route('b', '/b')(Mock())
     router.route('a', '/a', after=b)(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -72,6 +75,7 @@ def test_custom_order_2():
     router.route('b', '/b')(Mock())
     router.route('a', '/a', after='b')(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -84,6 +88,7 @@ def test_custom_order_3():
     router.route('b', '/b')(Mock())
     router.route('c', '/c', before='b')(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -98,6 +103,7 @@ def test_custom_order_4():
     router.route('b', '/b')(Mock())
     router.route('c', '/c', before='a')(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -112,6 +118,7 @@ def test_custom_order_5():
     router.route('b', '/b', before='a')(Mock())
     router.route('c', '/c', before='a')(Mock())
     conf = init({'router': router}, ctx=init_ctx())
+    conf._finalize()
     sorted_routes = list(conf.routes.keys())
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
@@ -124,7 +131,7 @@ def test_loop_1():
     router = Router()
     router.route('a', '/a', before='a')(Mock())
     with pytest.raises(DependencyLoop):
-        init({'router': router}, ctx=init_ctx())
+        init({'router': router}, ctx=init_ctx())._finalize()
 
 
 def test_loop_2():
@@ -132,7 +139,7 @@ def test_loop_2():
     router.route('a', '/a', before='b')(Mock())
     router.route('b', '/b', before='a')(Mock())
     with pytest.raises(DependencyLoop):
-        init({'router': router}, ctx=init_ctx())
+        init({'router': router}, ctx=init_ctx())._finalize()
 
 
 def test_loop_3():
@@ -141,4 +148,4 @@ def test_loop_3():
     router.route('b', '/b', before='c')(Mock())
     router.route('c', '/c', before='a')(Mock())
     with pytest.raises(DependencyLoop):
-        init({'router': router}, ctx=init_ctx())
+        init({'router': router}, ctx=init_ctx())._finalize()

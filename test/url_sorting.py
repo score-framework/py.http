@@ -1,4 +1,4 @@
-from score.http.url import PatternUrlTemplate as PatternUrl
+from score.http._urltpl import PatternUrlTemplate as PatternUrl
 
 
 def test_empty_pattern():
@@ -25,7 +25,7 @@ def test_string_comparison():
     url2 = PatternUrl('b')
     assert url1 != url2
     assert url1 < url2
-    assert url1 <= url2
+    assert not url1.equals(url2)
     assert not (url1 > url2)
 
 
@@ -33,7 +33,7 @@ def test_string_vs_pattern_1():
     url1 = PatternUrl('a')
     url2 = PatternUrl('{b}')
     assert url1 < url2
-    assert url1 <= url2
+    assert not url1.equals(url2)
     assert not (url1 > url2)
 
 
@@ -41,7 +41,7 @@ def test_string_vs_pattern_2():
     url1 = PatternUrl('b')
     url2 = PatternUrl('{a}')
     assert url1 < url2
-    assert url1 <= url2
+    assert not url1.equals(url2)
     assert not (url1 > url2)
 
 
