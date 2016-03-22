@@ -174,7 +174,6 @@ class RouterConfiguration:
                 raise DependencyLoop(loop)
 
     def _insert_before(self, graph, route, other):
-        print('insert_before(%s, %s)' % (route.name, other))
         graph.add_edge(route.name, other)
         try:
             loop = nx.find_cycle(graph, route.name)
