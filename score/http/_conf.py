@@ -165,52 +165,66 @@ class RouterConfiguration:
 
     def _insert_constrained(self, graph, route):
         for before in route.before:
-            loop = self._insert_before(graph, route, before)
-            if loop:
-                raise DependencyLoop(loop)
+            self._insert_before(graph, route, before)
         for after in route.after:
-            loop = self._insert_after(graph, route, after)
-            if loop:
-                raise DependencyLoop(loop)
+            self._insert_after(graph, route, after)
 
     def _insert_before(self, graph, route, other):
-        graph.add_edge(route.name, other)
         try:
-            loop = nx.find_cycle(graph, route.name)
-            graph.remove_edge(route.name, other)
-            return loop
-        except nx.NetworkXNoCycle:
-            pass
-        for predecessor in graph.predecessors_iter(other):
-            preroute = self.routes[predecessor]
-            if route.urltpl < preroute.urltpl:
-                self._insert_before(graph, route, predecessor)
-            elif route.urltpl > preroute.urltpl:
-                graph.add_edge(predecessor, route.name)
+            route_predecessors = graph.predecessors(route.name)
+        except nx.NetworkXError:
+            route_predecessors = []
+        if other in route_predecessors:
+            graph.add_edge(route.name, other)
+            raise DependencyLoop(nx.find_cycle(graph, route.name))
+        try:
+            other_predecessors = graph.successors(other)[:]
+        except nx.NetworkXError:
+            other_predecessors = []
+        for other_predecessor in other_predecessors:
+            if route.urltpl < self.routes[other_predecessor].urltpl:
                 try:
-                    nx.find_cycle(graph, predecessor)
-                    graph.remove_edge(predecessor, route.name)
-                except nx.NetworkXNoCycle:
+                    self._insert_before(graph, route, other_predecessor)
+                    break
+                except DependencyLoop:
                     pass
-        return None
+        else:
+            graph.add_edge(route.name, other)
+            for other_predecessor in graph.predecessors(other)[:]:
+                if self.routes[other_predecessor].urltpl < route.urltpl:
+                    try:
+                        graph.remove_edge(other_predecessor, other)
+                    except nx.NetworkXError:
+                        pass
+                    else:
+                        graph.add_edge(other_predecessor, route.name)
 
     def _insert_after(self, graph, route, other):
-        graph.add_edge(other, route.name)
         try:
-            loop = nx.find_cycle(graph, other)
-            graph.remove_edge(route.name, other)
-            return loop
-        except nx.NetworkXNoCycle:
-            pass
-        for successor in graph.successors_iter(other):
-            postroute = self.routes[successor]
-            if route.urltpl > postroute.urltpl:
-                self._insert_after(graph, route, successor)
-            elif route.urltpl < postroute.urltpl:
-                graph.add_edge(route.name, successor)
+            route_successors = graph.successors(route.name)
+        except nx.NetworkXError:
+            route_successors = []
+        if other in route_successors:
+            graph.add_edge(other, route.name)
+            raise DependencyLoop(nx.find_cycle(graph, route.name))
+        try:
+            other_successors = graph.successors(other)[:]
+        except nx.NetworkXError:
+            other_successors = []
+        for other_successor in other_successors:
+            if self.routes[other_successor].urltpl < route.urltpl:
                 try:
-                    nx.find_cycle(graph, route.name)
-                    graph.remove_edge(route.name, successor)
-                except nx.NetworkXNoCycle:
+                    self._insert_after(graph, route, other_successor)
+                    break
+                except DependencyLoop:
                     pass
-        return None
+        else:
+            graph.add_edge(other, route.name)
+            for other_successor in graph.successors(other)[:]:
+                if route.urltpl < self.routes[other_successor].urltpl:
+                    try:
+                        graph.remove_edge(other, other_successor)
+                    except nx.NetworkXError:
+                        pass
+                    else:
+                        graph.add_edge(route.name, other_successor)
