@@ -46,6 +46,7 @@ defaults = {
     'urlbase': None,
     'host': '0.0.0.0',
     'port': 8080,
+    'threaded': False,
 }
 
 
@@ -76,6 +77,9 @@ def init(confdict, ctx, db=None):
 
     :confkey:`port`
         TODO: document me
+
+    :confkey:`threaded`
+        TODO: document me
     """
     conf = dict(defaults.items())
     conf.update(confdict)
@@ -97,7 +101,8 @@ def init(confdict, ctx, db=None):
         conf['urlbase'] = ''
     http = ConfiguredHttpModule(
         ctx, db, router, preroutes, error_handlers, exception_handlers, debug,
-        conf['urlbase'], conf['host'], int(conf['port']))
+        conf['urlbase'], conf['host'], int(conf['port']),
+        parse_bool(conf['threaded']))
 
     def constructor(ctx):
         def url(*args, **kwargs):
@@ -253,7 +258,7 @@ class Route:
 class ConfiguredHttpModule(ConfiguredModule):
 
     def __init__(self, ctx, db, router, preroutes, error_handlers,
-                 exception_handlers, debug, urlbase, host, port):
+                 exception_handlers, debug, urlbase, host, port, threaded):
         self.ctx = ctx
         self.db = db
         self.router = router.clone()
@@ -264,6 +269,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         self.urlbase = urlbase
         self.host = host
         self.port = port
+        self.threaded = threaded
 
     def route(self, name):
         return self.routes[name]
@@ -359,7 +365,8 @@ class ConfiguredHttpModule(ConfiguredModule):
 
                 def _mkserver(runner):
                     from werkzeug.serving import make_server
-                    return make_server(self.host, self.port, self.mkwsgi())
+                    return make_server(self.host, self.port, self.mkwsgi(),
+                                       threaded=self.threaded)
 
             self._serve_runners = [Runner()]
 
