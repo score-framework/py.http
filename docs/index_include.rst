@@ -143,7 +143,7 @@ Creating URLs
 Once the module is configured, it can also generate URLs to any route through
 its :meth:`score.http.ConfiguredHttpModule.url` function. This function can, of
 course, be accessed through the usual :class:`score.init.ConfiguredScore`
-object in any given :term:`context`:
+object in any given :term:`context <context object>`:
 
 >>> ctx.score.http.url(ctx, 'hello/name', 'Sir Lancelot')
 /Sir%20Lancelot
@@ -346,9 +346,9 @@ Request Context
 ---------------
 
 As soon as an HTTP request is received, the module will first create a new
-request :term:`context` and add a new member called ``http``, which is an
-object of type ``HttpContext``. The most prominent two attributes of this
-object are *request* and *response*.
+request :term:`context <context object>` and add a new member called ``http``,
+which is an object of type ``HttpContext``. The most prominent two attributes
+of this object are *request* and *response*.
 
 The *request* is, of course, the HTTP request that was received. The *response*
 object is an instance of :class:`webob.Response`, which will be used to
@@ -356,7 +356,8 @@ transmit the server response to the client by default. Usage of this object is
 optional, though, as routes may return (or :mod:`raise <webob.exc>`) a
 different :class:`webob.Response` object.
 
-The :term:`context` will be automatically cleaned up at the end of the request.
+The :term:`context <context object>` will be automatically cleaned up at the
+end of the request.
 
 
 .. _http_routing_findroute:
@@ -397,8 +398,8 @@ Calling Preroutes
 
 Once we know which route will be called to handle the request, any registered
 :term:`preroutes <preroute>` will be called first. A preroute is just a
-function that accepts a :term:`context`, which will be called before the actual
-route. They can be used to implement login, access control, or any other
+function that accepts a :term:`context object`, which will be called before the
+actual route. They can be used to implement login, access control, or any other
 feature independant of the current URL.
 
 
