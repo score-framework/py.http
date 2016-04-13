@@ -58,14 +58,8 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
-    entry_points={
-        'score.cli': [
-            'http = score.http.cli:main',
-        ]
-    },
     install_requires=[
         'score.init >= 0.3',
-        'score.dbgsrv >= 0.1',
         'werkzeug',
         'webob',
     ]
