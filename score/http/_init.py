@@ -223,7 +223,7 @@ class Route:
 
     def handle(self, ctx):
         request = ctx.http.request
-        match = self.urltpl.regex.match(request.path)
+        match = self.urltpl.regex.match(urllib.parse.unquote(request.path))
         if not match:
             log.debug('  %s: No regex match (%s)' %
                       (self.name, self.urltpl.regex.pattern))
