@@ -346,8 +346,7 @@ class ConfiguredHttpModule(ConfiguredModule):
                     # need to create the url a second time to incorporate the
                     # query string
                     ctx.http.redirect(route.url(
-                        ctx, _query=ctx.http.request.GET,
-                        _relative=True, **result))
+                        ctx, _query=ctx.http.request.GET, **result))
             return result
         return match2vars
 
