@@ -64,8 +64,8 @@ def init(confdict, ctx, db=None):
         route.  See :ref:`http_routing` for details.
 
     :confkey:`handler.*`
-        Keys starting with '``handler.`` are interpreted as :ref:`error handlers
-        <http_error_handler>`.
+        Keys starting with "``handler.``" are interpreted as :ref:`error
+        handlers <http_error_handler>`.
 
     :confkey:`debug` :confdefault:`False`
         Setting this to `True` will enable the `werkzeug debugger`_ for your
