@@ -1,3 +1,6 @@
+.. image:: https://raw.githubusercontent.com/score-framework/py.doc/master/docs/score-banner.png
+    :target: http://score-framework.org
+
 `The SCORE Framework`_ is a collection of harmonized python and javascript
 libraries for the development of large scale web projects. Powered by strg.at_.
 
@@ -7,6 +10,16 @@ libraries for the development of large scale web projects. Powered by strg.at_.
 
 score.http
 ==========
+
+This package enables you to write WSGI_ aplications using The SCORE Framework.
+
+.. _WSGI: https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface
+
+The `narrative documentation of score.http`__ contains all the information you
+need to put this module to good use.
+
+__ http://www.score-framework.org/doc/python/http/
+
 
 An HTTP router for creating wsgi applications with The SCORE Framework.
 
