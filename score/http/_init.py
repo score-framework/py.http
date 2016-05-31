@@ -121,8 +121,8 @@ def init(confdict, ctx, db=None):
         conf['urlbase'] = ''
     http = ConfiguredHttpModule(
         ctx, db, router, preroutes, error_handlers, exception_handlers, debug,
-        conf['urlbase'], conf['host'], int(conf['port']),
-        parse_bool(conf['threaded']))
+        conf['urlbase'], conf['serve.ip'], int(conf['serve.port']),
+        parse_bool(conf['serve.threaded']))
 
     def constructor(ctx):
         def url(*args, **kwargs):
