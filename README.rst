@@ -21,11 +21,6 @@ need to put this module to good use.
 __ http://www.score-framework.org/doc/python/http/
 
 
-An HTTP router for creating wsgi applications with The SCORE Framework.
-
-This module is a work in progress, thus currently poorly documented :-/
-
-
 License
 =======
 
