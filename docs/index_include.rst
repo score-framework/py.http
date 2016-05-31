@@ -388,20 +388,20 @@ overview of this process:
 
 ::
 
-    .           |
-                |
-                +--------------------------------------------+
-                |                     |                      |
-                |                     | no match             | failure
-    +-----------v----------+  found  +------------+  match  +-------------------+
-    | Determine next Route +-------->| Test Regex |-------->| Extract Variables |
-    +----------------------+         +------------+         +-------------------+
-                     |                                                   |
-                     | no routes left                            success |
-                     v                                                   v
-                  +-----+                                         +-------------+
-                  | 404 |                                         | route found |
-                  +-----+                                         +-------------+
+    HTTP request |
+                 |
+                 +--------------------------------------------+
+                 |                     |                      |
+                 v                     | no match             | failure
+     +----------------------+  found  +------------+  match  +-------------------+
+     | Determine next Route |-------->| Test Regex |-------->| Extract Variables |
+     +----------------------+         +------------+         +-------------------+
+                      |                                                   |
+                      | no routes left                            success |
+                      v                                                   v
+                   +-----+                                         +-------------+
+                   | 404 |                                         | route found |
+                   +-----+                                         +-------------+
    
    
 The details to this process can be found in the section about
@@ -489,8 +489,8 @@ conditions:
       [http]
       handler.WrongAnswerException = path.to.handle_wrong_answer
 
-Configuration
-=============
+API
+===
 
 .. autofunction:: score.http.init
 
