@@ -1,13 +1,10 @@
 .. module:: score.http
-.. role:: default
 .. role:: confkey
+.. role:: confdefault
 
 **********
 score.http
 **********
-
-Introduction
-============
 
 This module consists of the only essential feature required to write an HTTP
 application: The :term:`request router`. It also provides appropriate functions
@@ -15,23 +12,22 @@ to wrap the router to form a valid WSGI_ application.
 
 .. _WSGI: https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface
 
+Quickstart
+==========
 
-.. _http_router:
-
-Router
-======
-
-The :term:`router <request router>` is responsible for efficiently deciding
-which function should be called given an arbitrary HTTP request. These
-functions are then called :term:`routes <route>`. The configuration of the
-router is done using a :term:`configuration helper`. Here is an example
-initializing two routes:
+Create a :term:`router <request router>`, which will be responsible for
+efficiently deciding which function should be called given an arbitrary HTTP
+request:
 
 .. code-block:: python
 
     from score.http import RouterConfiguration
 
     routeconf = RouterConfiguration()
+
+Define some :term:`routes <route>` with your new router:
+
+.. code-block:: python
 
     @routeconf.route('hello', '/')
     def hello(ctx):
@@ -41,14 +37,35 @@ initializing two routes:
     def hello_name(ctx, name):
         return 'Hello, %s!' % name
 
-If this code is in the package *greeter.page*, for example, the configuration
+If this code is in the package *greeter*, for example, the configuration
 of the module should look like the following to make use of these routes:
 
 .. code-block:: ini
 
     [http]
-    router = greeter.page.routeconf
+    router = greeter.routeconf
 
+You can now create URLs to these routes directly from within your
+:term:`context <context object>`:
+
+>>> ctx.score.http.url(ctx, 'hello/name', 'Sir Lancelot')
+/Sir%20Lancelot
+
+When you open the URL in your browser, the router will make sure that your
+``hello_name`` function is called to generate a response to the incoming
+request.
+
+
+Configuration
+=============
+
+.. autofunction:: score.http.init
+
+
+Details
+=======
+
+.. _http_router:
 
 Router Compilation
 ------------------
@@ -94,7 +111,7 @@ would assume that the *hello/name* route was requested with an empty string as
 .. _http_route_sorting:
 
 Route Sorting
--------------
+^^^^^^^^^^^^^
 
 So how do we define the order of the routes? This is actually feature of the
 :class:`UrlTemplates <.UrlTemplate>` class: It implements the
@@ -140,7 +157,7 @@ ordering of these rules manually in such scenarios. You can either pass a
 Creating URLs
 -------------
 
-Once the module is configured, it can also generate URLs to any route through
+Once the module is configured, it can generate URLs to any route through
 its :meth:`score.http.ConfiguredHttpModule.url` function. This function can, of
 course, be accessed through the usual :class:`score.init.ConfiguredScore`
 object in any given :term:`context <context object>`:
@@ -175,7 +192,7 @@ sirlancelot
 >>> ctx.url('profile', knight)
 /user/sirlancelot
 
-It is furthe possible to add a query string and/or an anchor specification by
+It is further possible to add a query string and/or an anchor specification by
 passing the keyword arguments *_query* and *_anchor*:
 
 >>> ctx.url('profile', knight, _query={'sillymode': 'true'}, _anchor='friends')
@@ -205,7 +222,7 @@ teach the route two things:
 - how to determine obtain a *user* object, when all we have is a URL.
 
 Variables to URL
-````````````````
+^^^^^^^^^^^^^^^^
 
 In most scenarios, the first issue can be handed off to the router, as the
 default behaviour should be sufficient. But it is possible to override this
@@ -252,7 +269,7 @@ anchor:
 
 
 URL to Variables
-````````````````
+^^^^^^^^^^^^^^^^
 
 The inverse operation—converting regular expression matches to python
 variables—can be done using another function called ``match2vars``:
@@ -327,7 +344,7 @@ redirecting it to the new url ``/user/loretta/1``.
 .. _http_routing:
 
 Request Routing
-===============
+---------------
 
 We have already seen, that a route is basically just a function with an
 additional annotation. We will now look at the application flow from the point
@@ -343,7 +360,7 @@ Let's first look at the data flow from an abstract perspective:
 .. _http_routing_ctx:
 
 Request Context
----------------
+^^^^^^^^^^^^^^^
 
 As soon as an HTTP request is received, the module will first create a new
 request :term:`context <context object>` and add a new member called ``http``,
@@ -363,7 +380,7 @@ end of the request.
 .. _http_routing_findroute:
 
 Determining the Route
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 Once there is a request context, the router will first determine the route to
 call for this request. The following diagram should provide a high-level
@@ -394,7 +411,7 @@ The details to this process can be found in the section about
 .. _http_routing_preroute:
 
 Calling Preroutes
------------------
+^^^^^^^^^^^^^^^^^
 
 Once we know which route will be called to handle the request, any registered
 :term:`preroutes <preroute>` will be called first. A preroute is just a
@@ -406,7 +423,7 @@ feature independant of the current URL.
 .. _http_routing_callroute:
 
 Calling the Route
------------------
+^^^^^^^^^^^^^^^^^
 
 If the call to the preroutes were successfull, the previously determined route
 will now be called. The route has several options for handling the route call. It can:
@@ -430,17 +447,66 @@ a template in its route declaration:
 This will implicitly render the template *user.jinja2* with the variables
 returned from the route.
 
+.. _http_error_handler:
+
+Error Handlers
+--------------
+
+You can configure two types of error handlers, which will be called on certain
+conditions:
+
+* HTTP status code handlers will be invoked, when the :term:`route` returns a
+  valid response. There can only be one handler per status code. Example for
+  registering an error handler, that will print a "pretty error message" on
+  exceptions:
+
+  .. code-block:: python
+
+      def handle_exception(ctx):
+          return "pretty error message"
+
+  .. code-block:: ini
+
+      [http]
+      handler.500 = path.to.handle_exception
+
+  .. note::
+
+      Currently, the router implementation only calls the error handler if
+      there actually was an error (i.e. an exception was raised). This is a
+      known issue and will be addressed in the future.
+
+* Exception handlers will be invoked, if a :term:`route` raises an exception,
+  that is a sub-type of the given exception name:
+
+  .. code-block:: python
+
+      def handle_wrong_answer(ctx):
+          return "NO! Yelloooooww ..."
+
+  .. code-block:: ini
+
+      [http]
+      handler.WrongAnswerException = path.to.handle_wrong_answer
 
 Configuration
 =============
 
 .. autofunction:: score.http.init
 
+.. autoclass:: score.http.Route()
+
+    .. automethod:: url
+
+    .. attribute:: callback
+
+        The function to call, when this route is invoked.
+
 .. autoclass:: score.http.ConfiguredHttpModule()
 
-    .. attribute:: cachedir
+    .. automethod:: route
 
-        The cache folder that can be used by other modules. A Module using
-        this value should first create a sub-folder with its
-        :term:`category string <asset category>`.
+    .. automethod:: url
+
+    .. automethod:: mkwsgi
 
