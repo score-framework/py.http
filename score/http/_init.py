@@ -44,6 +44,7 @@ defaults = {
     'debug': False,
     'preroutes': [],
     'urlbase': None,
+    'ctx.member.url': 'url',
     'serve.ip': '0.0.0.0',
     'serve.port': 8080,
     'serve.threaded': False,
@@ -83,6 +84,9 @@ def init(confdict, ctx, db=None):
         Note that you can always decide, whether a *certain* URL should be
         absolute or relative, by passing the appropriate argument to
         :meth:`ConfiguredHttpModule.url`.
+
+    :confkey:`ctx.member.url` :confdefault:`url`
+        The name of the :term:`context member` function for generating URLs.
 
     :confkey:`serve.ip` :confdefault:`0.0.0.0`
         This will be the ip address your HTTP server will bind_ to, when using
@@ -129,7 +133,7 @@ def init(confdict, ctx, db=None):
             return http.url(ctx, *args, **kwargs)
         return url
 
-    ctx.register('url', constructor)
+    ctx.register(conf['ctx.member.url'], constructor)
     return http
 
 
