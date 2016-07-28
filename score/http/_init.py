@@ -321,7 +321,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         for name, route in self.routes.items():
             if not route._match2vars and db:
                 route._match2vars = self._mk_match2vars(route)
-        if not log.isEnabledFor(logging.INFO):
+        if not log.isEnabledFor(logging.DEBUG):
             return
         msg = 'Compiled routes:'
         for name, route in self.routes.items():
