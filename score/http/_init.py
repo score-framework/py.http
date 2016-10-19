@@ -407,6 +407,21 @@ class ConfiguredHttpModule(ConfiguredModule):
 
         return self._serve_runners
 
+    def score_serve_workers(self):
+        if not hasattr(self, '_score_serve_workers'):
+            import score.serve
+
+            class Worker(score.serve.SocketServerWorker):
+
+                def _mkserver(runner):
+                    from werkzeug.serving import make_server
+                    return make_server(self.host, self.port, self.mkwsgi(),
+                                       threaded=self.threaded)
+
+            self._score_serve_workers = {'http': Worker()}
+
+        return self._score_serve_workers
+
     def mkwsgi(self):
         """
         Creates a WSGI_ application, that will route incoming requests to the
