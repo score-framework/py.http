@@ -29,6 +29,9 @@ import networkx as nx
 from score.init import InitializationError as ScoreInitializationError
 from itertools import permutations
 import functools
+import os
+import mimetypes
+from webob.exc import HTTPNotFound
 
 
 class InitializationError(ScoreInitializationError):
@@ -133,7 +136,35 @@ class RouterConfiguration:
             return route
         return capture_route
 
-    # TODO: add support for static routes
+    def define_static_route(self, name, urltpl, rootdir, *,
+                            force_mimetype=None, **kwargs):
+        mimetype = (None, None)
+        if isinstance(force_mimetype, str):
+            mimetype = (force_mimetype, None)
+        elif force_mimetype:
+            mimetype = force_mimetype
+
+        @self.route(name, urltpl, **kwargs)
+        def static_route(ctx, path):
+            base = rootdir
+            if callable(rootdir):
+                base = rootdir(ctx, path)
+            path = os.path.join(base, path)
+            if not os.path.commonprefix((base, path)).startswith(base):
+                # the path points outside of base
+                raise HTTPNotFound()
+            try:
+                ctx.http.response.app_iter = open(path, 'rb')
+            except (FileNotFoundError, IsADirectoryError):
+                raise HTTPNotFound()
+            content_type, content_encoding = mimetype
+            if not content_type:
+                guess = mimetypes.guess_type(path, strict=False)
+                if guess[0]:
+                    content_type, content_encoding = guess
+            ctx.http.response.content_type = content_type
+            if content_encoding:
+                ctx.http.response.content_encoding = content_encoding
 
     def sorted_routes(self):
         graph = nx.DiGraph()
