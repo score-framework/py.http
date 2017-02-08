@@ -421,6 +421,7 @@ class ConfiguredHttpModule(ConfiguredModule):
                         socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     self.socket.setsockopt(
                         socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                    super().server_bind()
 
             class Worker(score.serve.SocketServerWorker):
 
