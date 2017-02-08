@@ -410,13 +410,22 @@ class ConfiguredHttpModule(ConfiguredModule):
     def score_serve_workers(self):
         if not hasattr(self, '_score_serve_workers'):
             import score.serve
+            import socket
+            from werkzeug.serving import BaseWSGIServer
+
+            class Server(BaseWSGIServer):
+                multithread = self.threaded
+
+                def server_bind(self):
+                    self.socket.setsockopt(
+                        socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    self.socket.setsockopt(
+                        socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
             class Worker(score.serve.SocketServerWorker):
 
                 def _mkserver(runner):
-                    from werkzeug.serving import make_server
-                    return make_server(self.host, self.port, self.mkwsgi(),
-                                       threaded=self.threaded)
+                    return Server(self.host, self.port, self.mkwsgi())
 
             self._score_serve_workers = {'http': Worker()}
 
