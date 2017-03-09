@@ -251,6 +251,24 @@ class Route:
                 return None
         return variables
 
+    def can_handle(self, request):
+        match = self.urltpl.regex.match(urllib.parse.unquote(request.path))
+        if not match:
+            return False
+        ctx = self.conf.ctx.Context()
+        ctx.http = self.conf.create_ctx_member(request)
+        try:
+            variables = self._call_match2vars(ctx, match)
+            if variables is None:
+                return False
+        except HTTPException:
+            # the _match2vars function may raise an HTTPException, which implies
+            # that this route would indeed be responsible for the given request,
+            # but its implementation chose to handle it prematurely (i.e. before
+            # the route callback itself was executed)
+            pass
+        return True
+
     def handle(self, ctx):
         request = ctx.http.request
         match = self.urltpl.regex.match(urllib.parse.unquote(request.path))
@@ -458,6 +476,16 @@ class ConfiguredHttpModule(ConfiguredModule):
                         response = self.create_failsafe_response(request, e)
                 return response(env, start_response)
         return app
+
+    def find_route_for(self, request_or_url):
+        if isinstance(request_or_url, Request):
+            request = request_or_url
+        else:
+            request = Request.blank(urllib.parse.quote(request_or_url))
+        for route in self.routes.values():
+            if route.can_handle(request):
+                return route
+        return None
 
     def create_ctx_member(self, request):
         return Http(self, request)
