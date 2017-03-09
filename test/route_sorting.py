@@ -105,11 +105,7 @@ def test_custom_order_4():
     conf = init({'router': router}, ctx=init_ctx())
     conf._finalize()
     sorted_routes = list(conf.routes.keys())
-    assert 'a' in sorted_routes
-    assert 'b' in sorted_routes
-    assert 'c' in sorted_routes
-    assert sorted_routes.index('c') < sorted_routes.index('a')
-    assert sorted_routes.index('a') < sorted_routes.index('b')
+    assert sorted_routes == ['c', 'a', 'b']
 
 
 def test_custom_order_5():
@@ -123,7 +119,7 @@ def test_custom_order_5():
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
     assert 'c' in sorted_routes
-    assert sorted_routes.index('b') < sorted_routes.index('c')
+    assert sorted_routes.index('b') < sorted_routes.index('a')
     assert sorted_routes.index('c') < sorted_routes.index('a')
 
 

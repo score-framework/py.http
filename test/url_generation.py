@@ -67,7 +67,8 @@ def test_pathed_variable_2():
     conf = init({'router': router}, ctx=init_ctx())
     conf._finalize()
     article = Mock(id=123, author=Mock(slug='author-slug'))
-    assert conf.route('route').url(conf.ctx.Context(), article) == '/author-slug/123'
+    assert conf.route('route').url(conf.ctx.Context(), article) == \
+        '/author-slug/123'
 
 
 def test_pathed_variable_3():
@@ -76,5 +77,5 @@ def test_pathed_variable_3():
         lambda article: None)
     conf = init({'router': router}, ctx=init_ctx())
     conf._finalize()
-    with pytest.raises(MissingVariable):
+    with pytest.raises(InvalidVariable):
         conf.route('route').url(conf.ctx.Context(), object())
