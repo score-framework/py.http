@@ -481,7 +481,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         if isinstance(request_or_url, Request):
             request = request_or_url
         else:
-            request = Request.blank(urllib.parse.quote(request_or_url))
+            request = Request.blank(request_or_url)
         for route in self.routes.values():
             if route.can_handle(request):
                 return route
