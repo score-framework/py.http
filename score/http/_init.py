@@ -533,8 +533,8 @@ class ConfiguredHttpModule(ConfiguredModule):
                     try:
                         self.exception_handlers[exc](ctx, e)
                         break
-                    except (HTTPOk, HTTPRedirection) as success:
-                        ctx.http.response = success
+                    except HTTPException as response:
+                        ctx.http.response = response
                         break
                     except Exception as e2:
                         ctx.destroy(e2)
