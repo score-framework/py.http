@@ -531,7 +531,7 @@ class ConfiguredHttpModule(ConfiguredModule):
                 # kind of error
                 if isinstance(e, exc):
                     try:
-                        self.exception_handlers[exc](ctx)
+                        self.exception_handlers[exc](ctx, e)
                         break
                     except (HTTPOk, HTTPRedirection) as success:
                         ctx.http.response = success
