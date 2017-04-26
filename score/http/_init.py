@@ -34,7 +34,7 @@ from ._urltpl import MissingVariable, InvalidVariable
 from webob import Request, Response
 from webob.exc import (
     HTTPMovedPermanently, HTTPFound, HTTPNotFound, HTTPException,
-    HTTPRedirection, HTTPOk, HTTPInternalServerError)
+    HTTPInternalServerError)
 import logging
 from collections import OrderedDict
 import urllib
