@@ -209,7 +209,7 @@ class RouterConfiguration:
             graph.add_edge(route.name, other)
             raise DependencyLoop(nx.find_cycle(graph, route.name))
         try:
-            other_predecessors = graph.successors(other)[:]
+            other_predecessors = graph.predecessors(other)[:]
         except nx.NetworkXError:
             other_predecessors = []
         for other_predecessor in other_predecessors:
