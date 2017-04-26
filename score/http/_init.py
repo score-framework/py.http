@@ -418,7 +418,7 @@ class ConfiguredHttpModule(ConfiguredModule):
 
     def url(self, ctx, route, *args, **kwargs):
         """
-        Shortcut for ``route(route).url(*args, **kwargs)``.
+        Shortcut for ``route(route).url(ctx, *args, **kwargs)``.
         """
         return self.route(route).url(ctx, *args, **kwargs)
 
