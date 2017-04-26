@@ -310,8 +310,7 @@ class Route:
             else:
                 assert isinstance(result, dict)
             result['ctx'] = ctx
-            ctx.http.response.text = self.conf.tpl.renderer.render_file(
-                ctx, self.tpl, result)
+            ctx.http.response.text = self.conf.tpl.render(self.tpl, result)
         return ctx.http.response
 
 
