@@ -93,7 +93,7 @@ def test_custom_order_3():
     assert 'a' in sorted_routes
     assert 'b' in sorted_routes
     assert 'c' in sorted_routes
-    assert sorted_routes.index('a') < sorted_routes.index('c')
+    assert sorted_routes.index('a') < sorted_routes.index('b')
     assert sorted_routes.index('c') < sorted_routes.index('b')
 
 
