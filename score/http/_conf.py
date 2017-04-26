@@ -25,8 +25,9 @@
 # Licensee has his registered seat, an establishment or assets.
 
 from ._urltpl import UrlTemplate, PatternUrlTemplate
-import networkx as nx
-from score.init import InitializationError as ScoreInitializationError
+from score.init import (
+    InitializationError as ScoreInitializationError,
+    DependencySolver, DependencyLoop as ScoreInitDependencyLoop)
 from itertools import permutations
 import functools
 import os
@@ -167,95 +168,73 @@ class RouterConfiguration:
                 ctx.http.response.content_encoding = content_encoding
 
     def sorted_routes(self):
-        graph = nx.DiGraph()
-        constrained = set(r for r in self.routes.values()
-                          if r.before or r.after)
-        unconstrained = set(self.routes.values()) - constrained
-        for r1, r2 in permutations(unconstrained, 2):
-            if r1.urltpl.equals(r2.urltpl):
-                continue
-            if r1.urltpl < r2.urltpl:
-                graph.add_edge(r1.name, r2.name)
-            else:
-                graph.add_edge(r2.name, r1.name)
-        for route in constrained:
-            self._insert_constrained(graph, route)
-        for route in unconstrained:
-            if not graph.has_node(route.name):
+        try:
+            depsolv = DependencySolver()
+            constrained = set(r for r in self.routes.values()
+                              if r.before or r.after)
+            unconstrained = set(self.routes.values()) - constrained
+            for r1, r2 in permutations(unconstrained, 2):
+                if r1.urltpl.equals(r2.urltpl):
+                    continue
+                if r1.urltpl < r2.urltpl:
+                    depsolv.add_dependency(r1.name, r2.name)
+                else:
+                    depsolv.add_dependency(r2.name, r1.name)
+            for route in constrained:
+                self._insert_constrained(depsolv, route)
+            for route in unconstrained:
                 # quite improbable case, but this scenario does exist (all
                 # routes unconstrained and equal, for example)
-                graph.add_edge(None, route.name)
-        try:
-            loop = nx.find_cycle(graph)
-            raise DependencyLoop(loop)
-        except nx.NetworkXNoCycle:
-            pass
-        return list(self.routes[n]
-                    for n in nx.topological_sort(graph)
-                    if n is not None)
+                depsolv.add_dependency(route.name)
+            return list(self.routes[n]
+                        for n in reversed(depsolv.solve()))
+        except ScoreInitDependencyLoop as e:
+            raise DependencyLoop(e.loop)
 
-    def _insert_constrained(self, graph, route):
+    def _insert_constrained(self, depsolv, route):
         for before in route.before:
-            self._insert_before(graph, route, before)
+            self._insert_before(depsolv, route, before)
         for after in route.after:
-            self._insert_after(graph, route, after)
+            self._insert_after(depsolv, route, after)
 
-    def _insert_before(self, graph, route, other):
-        try:
-            route_predecessors = graph.predecessors(route.name)
-        except nx.NetworkXError:
-            route_predecessors = []
+    def _insert_before(self, depsolv, route, other):
+        route_predecessors = depsolv.direct_dependencies(route.name)
         if other in route_predecessors:
-            graph.add_edge(route.name, other)
-            raise DependencyLoop(nx.find_cycle(graph, route.name))
-        try:
-            other_predecessors = graph.predecessors(other)[:]
-        except nx.NetworkXError:
-            other_predecessors = []
+            depsolv.add_dependency(route.name, other)
+            depsolv.solve()  # raises ScoreInitDependencyLoop
+        other_predecessors = depsolv.direct_dependencies(other)
         for other_predecessor in other_predecessors:
             if route.urltpl < self.routes[other_predecessor].urltpl:
                 try:
-                    self._insert_before(graph, route, other_predecessor)
+                    self._insert_before(depsolv, route, other_predecessor)
                     break
-                except DependencyLoop:
+                except ScoreInitDependencyLoop:
                     pass
         else:
-            graph.add_edge(route.name, other)
-            for other_predecessor in graph.predecessors(other)[:]:
+            depsolv.add_dependency(route.name, other)
+            for other_predecessor in depsolv.direct_dependencies(other):
                 if self.routes[other_predecessor].urltpl < route.urltpl:
-                    try:
-                        graph.remove_edge(other_predecessor, other)
-                    except nx.NetworkXError:
-                        pass
-                    else:
-                        graph.add_edge(other_predecessor, route.name)
+                    if depsolv.has_direct_dependency(other_predecessor, other):
+                        depsolv.remove_dependency(other_predecessor, other)
+                        depsolv.add_dependency(other_predecessor, route.name)
 
-    def _insert_after(self, graph, route, other):
-        try:
-            route_successors = graph.successors(route.name)
-        except nx.NetworkXError:
-            route_successors = []
+    def _insert_after(self, depsolv, route, other):
+        route_successors = depsolv.direct_dependents(route.name)
         if other in route_successors:
-            graph.add_edge(other, route.name)
-            raise DependencyLoop(nx.find_cycle(graph, route.name))
-        try:
-            other_successors = graph.successors(other)[:]
-        except nx.NetworkXError:
-            other_successors = []
+            depsolv.add_dependency(other, route.name)
+            depsolv.solve()  # raises ScoreInitDependencyLoop
+        other_successors = depsolv.direct_dependents(other)
         for other_successor in other_successors:
             if self.routes[other_successor].urltpl < route.urltpl:
                 try:
-                    self._insert_after(graph, route, other_successor)
+                    self._insert_after(depsolv, route, other_successor)
                     break
-                except DependencyLoop:
+                except ScoreInitDependencyLoop:
                     pass
         else:
-            graph.add_edge(other, route.name)
-            for other_successor in graph.successors(other)[:]:
+            depsolv.add_dependency(other, route.name)
+            for other_successor in depsolv.direct_dependents(other):
                 if route.urltpl < self.routes[other_successor].urltpl:
-                    try:
-                        graph.remove_edge(other, other_successor)
-                    except nx.NetworkXError:
-                        pass
-                    else:
-                        graph.add_edge(route.name, other_successor)
+                    if depsolv.has_direct_dependency(other, other_successor):
+                        depsolv.remove_dependency(other, other_successor)
+                        depsolv.add_dependency(route.name, other_successor)
