@@ -294,6 +294,7 @@ class Route:
                 return None
             log.debug('  %s: SUCCESS, invoking callback' % (self.name))
             ctx.http.route = self
+            ctx.http.route_vars = variables
             for preroute in self.conf.preroutes:
                 preroute(ctx)
             result = self.callback(ctx, **variables)
