@@ -240,7 +240,7 @@ behaviour by providing a ``vars2urlparts`` function to the route:
             'user.username': user.username.lower()
         }
 
-As you can see, the ``vars2urlparts`` function opf a route must accept the
+As you can see, the ``vars2urlparts`` function of a route must accept the
 exact same parameters as the route itself. It must then return a `dict` mapping
 *all* variables in the url template to their values.
 
