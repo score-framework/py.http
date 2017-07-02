@@ -407,8 +407,9 @@ class ConfiguredHttpModule(ConfiguredModule):
                 if result[name] is None:
                     return
             if test_redirect and ctx.http.request.method == 'GET':
-                realpath = route.url(ctx, _relative=True, **result)
-                if ctx.http.request.path != realpath:
+                realpath = urllib.parse.unquote(
+                    route.url(ctx, _relative=True, **result))
+                if urllib.parse.unquote(ctx.http.request.path) != realpath:
                     # need to create the url a second time to incorporate the
                     # query string
                     ctx.http.redirect(route.url(
