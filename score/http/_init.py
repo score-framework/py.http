@@ -460,7 +460,7 @@ class ConfiguredHttpModule(ConfiguredModule):
                 def _mkserver(runner):
                     return Server(self.host, self.port, self.mkwsgi())
 
-            self._score_serve_workers = {'http': Worker()}
+            self._score_serve_workers = Worker()
 
         return self._score_serve_workers
 
