@@ -185,6 +185,11 @@ class Route:
             if kwargs['_query']:
                 query = '?' + urllib.parse.urlencode(kwargs['_query'])
             del kwargs['_query']
+        anchor = ''
+        if '_anchor' in kwargs:
+            if kwargs['_anchor']:
+                anchor = '#' + urllib.parse.quote(kwargs['_anchor'])
+            del kwargs['_anchor']
         if absolute:
             try:
                 urlbase = kwargs['_urlbase']
@@ -201,7 +206,7 @@ class Route:
             url = self.urltpl.generate(**variables)
         if urlbase:
             url = urlbase + url
-        return url + query
+        return url + query + anchor
 
     def _args2kwargs(self, args, kwargs):
         if not args:
