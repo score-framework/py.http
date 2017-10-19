@@ -617,7 +617,7 @@ class Http:
     def response(self):
         if self._response is None:
             self._response = Response(conditional_response=True)
-            self._response.charset = 'utf8'
+            self._response.charset = 'utf-8'
         return self._response
 
     @response.setter
