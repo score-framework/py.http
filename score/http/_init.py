@@ -51,7 +51,7 @@ defaults = {
 }
 
 
-def init(confdict, ctx, db=None):
+def init(confdict, ctx, orm=None, tpl=None):
     """
     Initializes this module acoording to :ref:`our module initialization
     guidelines <module_initialization>` with the following configuration keys:
@@ -124,8 +124,8 @@ def init(confdict, ctx, db=None):
     if not conf['urlbase']:
         conf['urlbase'] = ''
     http = ConfiguredHttpModule(
-        ctx, db, router, preroutes, error_handlers, exception_handlers, debug,
-        conf['urlbase'], conf['serve.ip'], int(conf['serve.port']),
+        ctx, orm, tpl, router, preroutes, error_handlers, exception_handlers,
+        debug, conf['urlbase'], conf['serve.ip'], int(conf['serve.port']),
         parse_bool(conf['serve.threaded']))
 
     def constructor(ctx):
@@ -325,10 +325,11 @@ class ConfiguredHttpModule(ConfiguredModule):
     This module's :class:`configuration class <score.init.ConfiguredModule>`.
     """
 
-    def __init__(self, ctx, db, router, preroutes, error_handlers,
+    def __init__(self, ctx, orm, tpl, router, preroutes, error_handlers,
                  exception_handlers, debug, urlbase, host, port, threaded):
         self.ctx = ctx
-        self.db = db
+        self.orm = orm
+        self.tpl = tpl
         self.router = router.clone()
         self.preroutes = preroutes
         self.error_handlers = error_handlers
@@ -349,12 +350,11 @@ class ConfiguredHttpModule(ConfiguredModule):
         assert not self._finalized
         return self.router.route(*args, **kwargs)
 
-    def _finalize(self, db=None, tpl=None):
-        self.tpl = tpl
+    def _finalize(self):
         self.routes = OrderedDict((route.name, Route(self, route))
                                   for route in self.router.sorted_routes())
         for name, route in self.routes.items():
-            if not route._match2vars and db:
+            if not route._match2vars and self.orm:
                 route._match2vars = self._mk_match2vars(route)
         if not log.isEnabledFor(logging.DEBUG):
             return
@@ -373,7 +373,7 @@ class ConfiguredHttpModule(ConfiguredModule):
             if param.annotation is inspect.Parameter.empty:
                 return
             cls = param.annotation
-            if not issubclass(cls, self.db.Base):
+            if not issubclass(cls, self.orm.Base):
                 return
             if ('%s.id' % name) in route.urltpl.variables:
                 idcol = 'id'
@@ -406,7 +406,7 @@ class ConfiguredHttpModule(ConfiguredModule):
             result = {}
             for var, (cls, idcol) in param2clsid.items():
                 id = matches['%s.%s' % (var, idcol)]
-                result[name] = ctx.db.query(cls).\
+                result[name] = self.orm.get_session(ctx).query(cls).\
                     filter(getattr(cls, idcol) == id).\
                     first()
                 if result[name] is None:
