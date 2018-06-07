@@ -46,7 +46,7 @@ class DependencyLoop(InitializationError):
 
     def __init__(self, loop):
         super().__init__('Cannot resolve ordering of the following routes:\n' +
-                         '\n'.join(map(lambda x: ' - ' + x[0], loop)))
+                         '\n'.join(map(lambda x: ' - ' + x, loop)))
 
 
 class DuplicateRouteDefinition(InitializationError):
