@@ -383,11 +383,24 @@ class ConfiguredHttpModule(ConfiguredModule):
                     match = re.match('%s\.([^.]+)$' % name, var)
                     if not match:
                         continue
-                    col = match.group(1)
-                    # TODO: handle the case where the column is part of a parent
-                    # table
-                    if table.columns.get(col).unique:
-                        idcol = col
+                    column_name = match.group(1)
+                    column = table.columns.get(column_name)
+                    if column is None:
+                        parent = cls
+                        while parent.__score_sa_orm__['parent']:
+                            parent = parent.__score_sa_orm__['parent']
+                            column = parent.__table__.columns.get(column_name)
+                            if column is not None:
+                                break
+                        else:
+                            import warnings
+                            warnings.warn(
+                                'Route "%s" references column "%s.%s", '
+                                'which does not exist.' % (
+                                    route.name, cls.__name__, column_name))
+                            return
+                    if column.unique:
+                        idcol = column_name
                         break
                 else:
                     return
