@@ -183,7 +183,7 @@ class Route:
         query = ''
         if '_query' in kwargs:
             if kwargs['_query']:
-                query = '?' + urllib.parse.urlencode(kwargs['_query'])
+                query = urllib.parse.urlencode(kwargs['_query'])
             del kwargs['_query']
         anchor = ''
         if '_anchor' in kwargs:
@@ -206,6 +206,11 @@ class Route:
             url = self.urltpl.generate(**variables)
         if urlbase:
             url = urlbase + url
+        if query:
+            if '?' in url:
+                query = '&' + query
+            else:
+                query = '?' + query
         return url + query + anchor
 
     def _args2kwargs(self, args, kwargs):
