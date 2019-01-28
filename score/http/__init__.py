@@ -1,4 +1,4 @@
-# Copyright © 2015-2017 STRG.AT GmbH, Vienna, Austria
+# Copyright © 2015-2018 STRG.AT GmbH, Vienna, Austria
 # Copyright © 2019 Necdet Can Ateşman, Vienna, Austria
 #
 # This file is part of the The SCORE Framework.
@@ -29,7 +29,7 @@ from ._init import init, ConfiguredHttpModule, Route
 from ._conf import (RouterConfiguration, InitializationError, DependencyLoop,
                     DuplicateRouteDefinition)
 
-__version__ = '0.4.4'
+__version__ = '0.4.5'
 
 __all__ = ('init', 'ConfiguredHttpModule', 'Route', 'RouterConfiguration',
            'InitializationError', 'DependencyLoop', 'DuplicateRouteDefinition')
