@@ -1,4 +1,5 @@
 # Copyright © 2015-2017 STRG.AT GmbH, Vienna, Austria
+# Copyright © 2019 Necdet Can Ateşman, Vienna, Austria
 #
 # This file is part of the The SCORE Framework.
 #
@@ -59,8 +60,10 @@ def init(confdict, ctx, orm=None, tpl=None):
     guidelines <module_initialization>` with the following configuration keys:
 
     :confkey:`router`
-        Path to the :class:`RouteConfiguration` containing the list of routes to
-        compile.
+        Either a path to an instance of :class:`RouteConfiguration` (as
+        interpreted by :func:`parse_dotted_path <score.init.parse_dotted_path>`)
+        or a list of such paths (as interpreted by :func:`parse_list
+        <score.init.parse_list>`).
 
     :confkey:`preroutes` :confdefault:`list()`
         List of :term:`preroute` functions to call before invoking the actual
