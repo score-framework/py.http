@@ -108,11 +108,6 @@ class RouterConfiguration:
     def __init__(self):
         self.routes = {}
 
-    def clone(self):
-        new = self.__class__()
-        new.routes.update(self.routes)
-        return new
-
     def route(self, name, urltpl, *, before=[], after=[], tpl=None):
         if isinstance(before, str) or not hasattr(before, '__iter__'):
             before = (before,)

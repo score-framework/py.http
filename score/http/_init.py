@@ -39,6 +39,8 @@ import logging
 from collections import OrderedDict
 import urllib
 
+from ._conf import RouterConfiguration
+
 
 defaults = {
     'debug': False,
@@ -110,7 +112,7 @@ def init(confdict, ctx, orm=None, tpl=None):
     if 'router' not in conf:
         import score.http
         raise ConfigurationError(score.http, 'No router provided')
-    router = parse_dotted_path(conf['router'])
+    routers = list(map(parse_dotted_path, parse_list(conf['router'])))
     preroutes = list(map(parse_dotted_path, parse_list(conf['preroutes'])))
     error_handlers = {}
     exception_handlers = {}
@@ -124,7 +126,7 @@ def init(confdict, ctx, orm=None, tpl=None):
     if not conf['urlbase']:
         conf['urlbase'] = ''
     http = ConfiguredHttpModule(
-        ctx, orm, tpl, router, preroutes, error_handlers, exception_handlers,
+        ctx, orm, tpl, routers, preroutes, error_handlers, exception_handlers,
         debug, conf['urlbase'], conf['serve.ip'], int(conf['serve.port']),
         parse_bool(conf['serve.threaded']))
 
@@ -330,12 +332,15 @@ class ConfiguredHttpModule(ConfiguredModule):
     This module's :class:`configuration class <score.init.ConfiguredModule>`.
     """
 
-    def __init__(self, ctx, orm, tpl, router, preroutes, error_handlers,
+    def __init__(self, ctx, orm, tpl, routers, preroutes, error_handlers,
                  exception_handlers, debug, urlbase, host, port, threaded):
         self.ctx = ctx
         self.orm = orm
         self.tpl = tpl
-        self.router = router.clone()
+        self.routers = routers
+        self.router = RouterConfiguration()
+        for router in routers:
+            self.router.routes.update(router.routes)
         self.preroutes = preroutes
         self.error_handlers = error_handlers
         self.exception_handlers = exception_handlers
