@@ -310,9 +310,13 @@ class Route:
             log.debug('  %s: SUCCESS, invoking callback' % (self.name))
             ctx.http.route = self
             ctx.http.route_vars = variables
+            result = None
             for preroute in self.conf.preroutes:
-                preroute(ctx)
-            result = self.callback(ctx, **variables)
+                result = preroute(ctx)
+                if isinstance(result, Response):
+                    break
+            if not isinstance(result, Response):
+                result = self.callback(ctx, **variables)
         except HTTPException as response:
             result = response
         if isinstance(result, Response):
