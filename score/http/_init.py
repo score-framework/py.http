@@ -634,11 +634,14 @@ class Http:
         self.req = self.request = request
         self.url = conf.url
 
-    def redirect(self, url, permanent=False):
+    def redirect(self, url, permanent=False, *, merge_cookies=True):
         if not permanent:
-            raise HTTPFound(location=url)
+            exc = HTTPFound(location=url)
         else:
-            raise HTTPMovedPermanently(location=url)
+            exc = HTTPMovedPermanently(location=url)
+        if merge_cookies and self._response:
+            exc.merge_cookies(self._response)
+        raise exc
 
     @property
     def response(self):
