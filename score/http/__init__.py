@@ -29,7 +29,7 @@ from ._init import init, ConfiguredHttpModule, Route
 from ._conf import (RouterConfiguration, InitializationError, DependencyLoop,
                     DuplicateRouteDefinition)
 
-__version__ = '0.4.6'
+__version__ = '0.4.7'
 
 __all__ = ('init', 'ConfiguredHttpModule', 'Route', 'RouterConfiguration',
            'InitializationError', 'DependencyLoop', 'DuplicateRouteDefinition')
