@@ -135,7 +135,7 @@ def init(confdict, ctx, orm=None, tpl=None):
 
     def constructor(ctx):
         def url(*args, **kwargs):
-            return http.url(ctx, *args, **kwargs)
+            return ctx.http.url(*args, **kwargs)
         return url
 
     ctx.register(conf['ctx.member.url'], constructor)
@@ -271,7 +271,7 @@ class Route:
         if not match:
             return False
         ctx = self.conf.ctx.Context()
-        ctx.http = self.conf.create_ctx_member(request)
+        ctx.http = self.conf.create_ctx_member(ctx, request)
         try:
             variables = self._call_match2vars(ctx, match)
             if variables is None:
@@ -289,7 +289,7 @@ class Route:
         if not match:
             return None
         ctx = self.conf.ctx.Context()
-        ctx.http = self.conf.create_ctx_member(request)
+        ctx.http = self.conf.create_ctx_member(ctx, request)
         try:
             return self._call_match2vars(ctx, match)
         except HTTPException as exception:
@@ -538,12 +538,12 @@ class ConfiguredHttpModule(ConfiguredModule):
                 return route, result
         return None, None
 
-    def create_ctx_member(self, request):
-        return Http(self, request)
+    def create_ctx_member(self, ctx, request):
+        return Http(self, ctx, request)
 
     def create_response(self, request):
         ctx = self.ctx.Context()
-        ctx.http = self.create_ctx_member(request)
+        ctx.http = self.create_ctx_member(ctx, request)
         try:
             log.debug('Received %s request for %s' %
                       (request.method, request.path))
@@ -589,7 +589,7 @@ class ConfiguredHttpModule(ConfiguredModule):
         try:
             with self.ctx.Context() as ctx:
                 ctx.tx.doom()
-                ctx.http = Http(self, request)
+                ctx.http = Http(self, ctx, request)
                 ctx.http.exc = ctx.http.exception = error
                 response = self.create_error_response(ctx, error)
                 return response
@@ -633,11 +633,11 @@ class ConfiguredHttpModule(ConfiguredModule):
 
 class Http:
 
-    def __init__(self, conf, request):
+    def __init__(self, conf, ctx, request):
         self._conf = conf
+        self._ctx = ctx
         self._response = None
         self.req = self.request = request
-        self.url = conf.url
 
     def redirect(self, url, permanent=False, *, merge_cookies=True):
         if not permanent:
@@ -658,5 +658,8 @@ class Http:
     @response.setter
     def response(self, value):
         self._response = value
+
+    def url(self, *args, **kwargs):
+        return self._conf.url(self._ctx, *args, **kwargs)
 
     res = response
