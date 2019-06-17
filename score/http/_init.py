@@ -638,6 +638,7 @@ class Http:
         self._ctx = ctx
         self._response = None
         self.req = self.request = request
+        self.urlbase = None
 
     def redirect(self, url, permanent=False, *, merge_cookies=True):
         if not permanent:
@@ -660,6 +661,8 @@ class Http:
         self._response = value
 
     def url(self, *args, **kwargs):
+        if '_urlbase' not in kwargs and self.urlbase:
+            kwargs['_urlbase'] = self.urlbase
         return self._conf.url(self._ctx, *args, **kwargs)
 
     res = response
