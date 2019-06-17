@@ -310,13 +310,7 @@ class Route:
             log.debug('  %s: SUCCESS, invoking callback' % (self.name))
             ctx.http.route = self
             ctx.http.route_vars = variables
-            result = None
-            for preroute in self.conf.preroutes:
-                result = preroute(ctx)
-                if isinstance(result, Response):
-                    break
-            if not isinstance(result, Response):
-                result = self.callback(ctx, **variables)
+            result = self.callback(ctx, **variables)
         except HTTPException as response:
             result = response
         if isinstance(result, Response):
@@ -553,12 +547,23 @@ class ConfiguredHttpModule(ConfiguredModule):
         try:
             log.debug('Received %s request for %s' %
                       (request.method, request.path))
-            for name, route in self.routes.items():
-                if route.handle(ctx):
-                    break
+            result = None
+            try:
+                for preroute in self.preroutes:
+                    result = preroute(ctx)
+                    if isinstance(result, Response):
+                        break
+            except HTTPException as response:
+                result = response
+            if isinstance(result, Response):
+                ctx.http.response = result
             else:
-                ctx.http.response = self.create_error_response(
-                    ctx, HTTPNotFound())
+                for name, route in self.routes.items():
+                    if route.handle(ctx):
+                        break
+                else:
+                    ctx.http.response = self.create_error_response(
+                        ctx, HTTPNotFound())
         except Exception as e:
             for exc in self.exception_handlers:
                 # let's see if we have a dedicated exception handler for this
