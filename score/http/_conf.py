@@ -5,8 +5,8 @@
 #
 # The SCORE Framework and all its parts are free software: you can redistribute
 # them and/or modify them under the terms of the GNU Lesser General Public
-# License version 3 as published by the Free Software Foundation which is in the
-# file named COPYING.LESSER.txt.
+# License version 3 as published by the Free Software Foundation which is in
+# the file named COPYING.LESSER.txt.
 #
 # The SCORE Framework and all its parts are distributed without any WARRANTY;
 # without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
@@ -22,8 +22,8 @@
 # concerning this License-Agreement including the issue of its valid conclusion
 # and its pre- and post-contractual effects are exclusively decided by the
 # competent court, in whose district STRG.AT GmbH has its registered seat, at
-# the discretion of STRG.AT GmbH also the competent court, in whose district the
-# Licensee has his registered seat, an establishment or assets.
+# the discretion of STRG.AT GmbH also the competent court, in whose district
+# the Licensee has his registered seat, an establishment or assets.
 
 from ._urltpl import UrlTemplate, PatternUrlTemplate
 from score.init import (
