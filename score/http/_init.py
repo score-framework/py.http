@@ -122,7 +122,7 @@ def init(confdict, ctx, orm=None, tpl=None):
     error_handlers = {}
     exception_handlers = {}
     for error, handler in extract_conf(conf, 'handler.').items():
-        if re.match('\d(\d\d|XX)', error):
+        if re.match(r'\d(\d\d|XX)', error):
             error_handlers[error] = parse_dotted_path(handler)
         else:
             error = parse_dotted_path(error)
@@ -394,7 +394,7 @@ class ConfiguredHttpModule(ConfiguredModule):
             else:
                 table = cls.__table__
                 for var in route.urltpl.variables:
-                    match = re.match('%s\.([^.]+)$' % name, var)
+                    match = re.match(r'%s\.([^.]+)$' % name, var)
                     if not match:
                         continue
                     column_name = match.group(1)
