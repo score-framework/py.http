@@ -250,7 +250,7 @@ class Route:
         variables = self.urltpl.match2vars(ctx, match)
         if self._match2vars:
             newvars = self._match2vars(ctx, variables)
-            if not newvars:
+            if newvars is None:
                 log.debug('  %s: registered match2vars() could not '
                           'convert variables (%s)' % (self.name, variables))
                 return None
