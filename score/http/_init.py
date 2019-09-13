@@ -515,7 +515,16 @@ class ConfiguredHttpModule(ConfiguredModule):
                     try:
                         response = self.create_response(request)
                     except Exception as e:
-                        log.exception(e)
+                        log.exception(e, extra={
+                            "payload": {
+                                "method": request.method,
+                                "url": request.url,
+                                "post": request.POST,
+                                "headers": list(
+                                    (key, value)
+                                    for key, value in request.headers.items()),
+                            }
+                        })
                         response = self.create_failsafe_response(request, e)
                 return response(env, start_response)
         return app
