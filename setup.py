@@ -61,8 +61,8 @@ setup(
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
     install_requires=[
-        'score.init >= 0.5.2',
-        'score.ctx',
+        'score.init >=0.5.2',
+        'score.ctx >=0.6.0, <0.7.0',
         'werkzeug',
         'webob',
     ]
