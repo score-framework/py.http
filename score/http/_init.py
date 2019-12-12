@@ -48,6 +48,7 @@ defaults = {
     'debug': False,
     'preroutes': [],
     'urlbase': None,
+    'ctx.member.http': 'http',
     'ctx.member.url': 'url',
     'serve.ip': '0.0.0.0',
     'serve.port': 8080,
@@ -92,6 +93,9 @@ def init(confdict, ctx, orm=None, tpl=None):
         absolute or relative, by passing the appropriate argument to
         :meth:`ConfiguredHttpModule.url`.
 
+    :confkey:`ctx.member.http` :confdefault:`http`
+        The name of the :term:`context member` containing the current request.
+
     :confkey:`ctx.member.url` :confdefault:`url`
         The name of the :term:`context member` function for generating URLs.
 
@@ -130,18 +134,18 @@ def init(confdict, ctx, orm=None, tpl=None):
     debug = parse_bool(conf['debug'])
     if not conf['urlbase']:
         conf['urlbase'] = ''
-    http = ConfiguredHttpModule(
+    ctx_member_http = conf['ctx.member.http']
+    if not ctx_member_http:
+        import score.http
+        raise ConfigurationError(score.http,
+                                 'Http context member name is empty')
+    ctx_member_url = conf['ctx.member.url']
+    if ctx_member_url and ctx_member_url.strip().lower() == 'none':
+        ctx_member_url = None
+    return ConfiguredHttpModule(
         ctx, orm, tpl, routers, preroutes, error_handlers, exception_handlers,
         debug, conf['urlbase'], conf['serve.ip'], int(conf['serve.port']),
-        parse_bool(conf['serve.threaded']))
-
-    def constructor(ctx):
-        def url(*args, **kwargs):
-            return ctx.http.url(*args, **kwargs)
-        return url
-
-    ctx.register(conf['ctx.member.url'], constructor)
-    return http
+        parse_bool(conf['serve.threaded']), ctx_member_http, ctx_member_url)
 
 
 log = logging.getLogger('score.http.router')
@@ -273,7 +277,7 @@ class Route:
         if not match:
             return False
         ctx = self.conf.ctx.Context()
-        ctx.http = self.conf.create_ctx_member(ctx, request)
+        self.conf.set_ctx_http_member(ctx, request)
         try:
             variables = self._call_match2vars(ctx, match)
             if variables is None:
@@ -291,7 +295,7 @@ class Route:
         if not match:
             return None
         ctx = self.conf.ctx.Context()
-        ctx.http = self.conf.create_ctx_member(ctx, request)
+        self.conf.set_ctx_http_member(ctx, request)
         try:
             return self._call_match2vars(ctx, match)
         except HTTPException as exception:
@@ -337,7 +341,8 @@ class ConfiguredHttpModule(ConfiguredModule):
     """
 
     def __init__(self, ctx, orm, tpl, routers, preroutes, error_handlers,
-                 exception_handlers, debug, urlbase, host, port, threaded):
+                 exception_handlers, debug, urlbase, host, port, threaded,
+                 ctx_member_http, ctx_member_url):
         self.ctx = ctx
         self.orm = orm
         self.tpl = tpl
@@ -353,6 +358,12 @@ class ConfiguredHttpModule(ConfiguredModule):
         self.host = host
         self.port = port
         self.threaded = threaded
+        self.ctx_member_http = ctx_member_http
+        self.ctx_member_url = ctx_member_url
+        if ctx_member_url:
+            def constructor(ctx):
+                return getattr(ctx, ctx_member_http).url
+            ctx.register(ctx_member_url, constructor)
 
     def route(self, name):
         """
@@ -550,12 +561,12 @@ class ConfiguredHttpModule(ConfiguredModule):
                 return route, result
         return None, None
 
-    def create_ctx_member(self, ctx, request):
-        return Http(self, ctx, request)
+    def set_ctx_http_member(self, ctx, request):
+        setattr(ctx, self.ctx_member_http, Http(self, ctx, request))
 
     def create_response(self, request):
         ctx = self.ctx.Context()
-        ctx.http = self.create_ctx_member(ctx, request)
+        self.set_ctx_http_member(ctx, request)
         try:
             log.debug('Received %s request for %s' %
                       (request.method, request.path))
@@ -606,7 +617,7 @@ class ConfiguredHttpModule(ConfiguredModule):
                 response = self.create_error_response(ctx, error)
                 return response
         except Exception as e:
-            if ctx._active:
+            if self.ctx.get_meta(ctx).active:
                 try:
                     ctx.destroy(e)
                 except Exception:
@@ -615,7 +626,10 @@ class ConfiguredHttpModule(ConfiguredModule):
             log.critical(e)
             return HTTPInternalServerError()
         finally:
-            assert not ctx or not ctx._active
+            if ctx:
+                meta = self.ctx.get_meta(ctx, autocreate=False)
+                if meta and meta.active:
+                    raise Exception('Context was not destroyed properly')
 
     def create_error_response(self, ctx, error):
         code = 500
