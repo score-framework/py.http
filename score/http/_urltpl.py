@@ -124,21 +124,44 @@ class PatternUrlTemplate(UrlTemplate):
         self._regex_pattern = ''
         self._var2regex = {}
         self._regexname2var = {}
-        for match in re.finditer(r'[^{]+|\{.+?\}', pattern):
-            part = match.group(0)
-            if part[0] != '{':
+        while pattern:
+            if pattern[0] != '{':
+                if '{' in pattern:
+                    part = pattern[:pattern.index('{')]
+                else:
+                    part = pattern
+                pattern = pattern[len(part):]
                 self.parts.append(PatternUrlPart(0, part))
                 self._regex_pattern += re.escape(part)
                 continue
-            if '>' in part:
-                name, pattern = part[1:-1].split('>', 1)
+            if '}' not in pattern:
+                raise Exception('Invalid pattern: ' + self.pattern)
+            brace_idx = pattern.index('}')
+            chevron_idx = brace_idx + 1
+            if '>' in pattern:
+                chevron_idx = pattern.index('>')
+            if brace_idx < chevron_idx:
+                name = pattern[1:brace_idx]
+                regex = '[^/]+'
+                pattern = pattern[brace_idx + 1:]
             else:
-                name = part[1:-1]
-                pattern = '[^/]+'
-            self._var2regex[name] = re.compile(pattern)
-            self.parts.append(PatternUrlPart(10, pattern, name))
+                name = pattern[1:chevron_idx]
+                open_braces = 0
+                for idx in range(chevron_idx + 1, len(pattern)):
+                    if pattern[idx] == '}':
+                        if not open_braces:
+                            break
+                        open_braces -= 1
+                    elif pattern[idx] == '{':
+                        open_braces += 1
+                else:
+                    raise Exception('Invalid pattern: ' + self.pattern)
+                regex = pattern[chevron_idx + 1:idx]
+                pattern = pattern[idx + 1:]
+            self._var2regex[name] = re.compile(regex)
+            self.parts.append(PatternUrlPart(10, regex, name))
             re_name = self._mkregexname(name)
-            self._regex_pattern += '(?P<%s>%s)' % (re_name, pattern)
+            self._regex_pattern += '(?P<%s>%s)' % (re_name, regex)
         self._regex_pattern += '$'
 
     def match2vars(self, ctx, match):
