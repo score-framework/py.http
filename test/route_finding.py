@@ -1,5 +1,11 @@
-from score.ctx import init as init_ctx
+from score.ctx import init as init_score_ctx
 from score.http import init, RouterConfiguration as Router
+
+
+def init_ctx():
+    ctx = init_score_ctx()
+    ctx._finalize(object())
+    return ctx
 
 
 def test_find_url_route_0():

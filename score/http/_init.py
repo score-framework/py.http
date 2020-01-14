@@ -121,7 +121,10 @@ def init(confdict, ctx, orm=None, tpl=None):
     if 'router' not in conf:
         import score.http
         raise ConfigurationError(score.http, 'No router provided')
-    routers = list(map(parse_dotted_path, parse_list(conf['router'])))
+    if isinstance(conf['router'], str):
+        routers = list(map(parse_dotted_path, parse_list(conf['router'])))
+    else:
+        routers = [conf['router']]
     preroutes = list(map(parse_dotted_path, parse_list(conf['preroutes'])))
     error_handlers = {}
     exception_handlers = {}
@@ -381,12 +384,11 @@ class ConfiguredHttpModule(ConfiguredModule):
         for name, route in self.routes.items():
             if not route._match2vars and self.orm:
                 route._match2vars = self._mk_match2vars(route)
-        if not log.isEnabledFor(logging.DEBUG):
-            return
-        msg = 'Compiled routes:'
-        for name, route in self.routes.items():
-            msg += '\n - %s (%s)' % (name, route.urltpl)
-        log.debug(msg)
+        if log.isEnabledFor(logging.DEBUG):
+            msg = 'Compiled routes:'
+            for name, route in self.routes.items():
+                msg += '\n - %s (%s)' % (name, route.urltpl)
+            log.debug(msg)
 
     def _mk_match2vars(self, route):
         param2clsid = {}

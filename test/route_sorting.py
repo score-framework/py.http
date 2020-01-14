@@ -1,10 +1,16 @@
-from score.ctx import init as init_ctx
+from score.ctx import init as init_score_ctx
 from score.http import (
     init, RouterConfiguration as Router, DependencyLoop,
     DuplicateRouteDefinition)
 from score.http._conf import RouteConfiguration
 import pytest
 from unittest.mock import Mock
+
+
+def init_ctx():
+    ctx = init_score_ctx()
+    ctx._finalize(object())
+    return ctx
 
 
 def test_empty_router():

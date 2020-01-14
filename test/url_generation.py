@@ -1,8 +1,14 @@
-from score.ctx import init as init_ctx
+from score.ctx import init as init_score_ctx
 from score.http import init, RouterConfiguration as Router
-from score.http._urltpl import InvalidVariable, MissingVariable
+from score.http._urltpl import InvalidVariable
 import pytest
 from unittest.mock import Mock
+
+
+def init_ctx():
+    ctx = init_score_ctx()
+    ctx._finalize(object())
+    return ctx
 
 
 def test_empty_route():
