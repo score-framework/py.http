@@ -365,7 +365,11 @@ class ConfiguredHttpModule(ConfiguredModule):
         self.ctx_member_url = ctx_member_url
         if ctx_member_url:
             def constructor(ctx):
-                return getattr(ctx, ctx_member_http).url
+                if hasattr(ctx, ctx_member_http):
+                    return getattr(ctx, ctx_member_http).url
+                def url(*args, **kwargs):
+                    return self.url(ctx, *args, **kwargs)
+                return url
             ctx.register(ctx_member_url, constructor)
 
     def route(self, name):
