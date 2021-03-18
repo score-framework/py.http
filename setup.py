@@ -36,7 +36,7 @@ with open(os.path.join(here, 'README.rst')) as f:
 
 setup(
     name='score.http',
-    version='0.5.5',
+    version='0.5.6',
     description='HTTP handler of The SCORE Framework',
     long_description=README,
     author='strg.at',
